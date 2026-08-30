@@ -14,7 +14,7 @@ export const FULL_DECK = SUITS.flatMap(suit =>
       suitName: sName,
       value,
       spanishName: `${value} de ${sName}`,
-      img: `/assets/cards/${suit.key}${i + 1}.jpg`,
+      img: `/assets/cards/${suit.key}${i + 1}.webp`,
     }
   })
 )
