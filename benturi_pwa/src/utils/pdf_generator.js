@@ -66,13 +66,14 @@ export async function generarPDFDesdeMarkdown(markdownText, filename = null) {
   // 3. Crear un iframe oculto para invocar el sistema de impresión sin salir de la app
   const iframe = document.createElement('iframe');
   
-  // Lo ocultamos de la vista del usuario
+  // Lo ocultamos de la vista del usuario de forma segura para impresión móvil
   iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.right = '100%';
+  iframe.style.bottom = '100%';
+  iframe.style.width = '100vw';
+  iframe.style.height = '100vh';
   iframe.style.border = 'none';
+  iframe.style.opacity = '0';
   
   document.body.appendChild(iframe);
 
