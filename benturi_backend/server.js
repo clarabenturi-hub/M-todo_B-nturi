@@ -429,23 +429,34 @@ app.post('/api/generate-report', async (req, res) => {
             contextText = extraFormatText + `TIPO DE MATRIZ: Matriz de 6 Vectores\nPREGUNTA DEL USUARIO: ${question}\n\nVECTORES BASE CON INFORMACIÓN DETERMINISTA DE LA BASE DE DATOS:\n${JSON.stringify(vectoresArray, null, 2)}\n\n`;
         }
 
-        let text = "";
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        
         let retries = 3;
-        while (retries > 0) {
+        let success = false;
+        while (retries > 0 && !success) {
             try {
                 const model = genAI.getGenerativeModel({ 
                     model: 'gemini-flash-latest', 
                     systemInstruction: systemPrompt,
                     generationConfig: { temperature: 0.0, topP: 1 }
                 });
-                const aiResponse = await model.generateContent(contextText);
-                text = aiResponse.response.text();
+                
+                const aiResponse = await model.generateContentStream(contextText);
+                
+                for await (const chunk of aiResponse.stream) {
+                    const chunkText = chunk.text();
+                    res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+                }
+                success = true;
                 break;
             } catch (e) {
                 console.error(`Error contactando con Gemini API. Reintentos restantes: ${retries - 1}`, e);
                 retries--;
                 if (retries === 0) {
-                    text = "# INFORME DE PROYECCIÓN DE FUTURO Y MATRIZ VECTORIAL\n\nHubo un error de conexión persistente con la IA cuántica. Detalles del error: " + e.message;
+                    const errorText = "# INFORME DE PROYECCIÓN DE FUTURO Y MATRIZ VECTORIAL\n\nHubo un error de conexión persistente con la IA cuántica. Detalles del error: " + e.message;
+                    res.write(`data: ${JSON.stringify({ text: errorText })}\n\n`);
                 } else {
                     await new Promise(resolve => setTimeout(resolve, 2000 * (4 - retries)));
                 }
@@ -453,19 +464,20 @@ app.post('/api/generate-report', async (req, res) => {
         }
         
         // Append static text if the generation succeeded
-        if (retries > 0) {
+        if (success) {
             try {
                 const staticPathFile = path.join(__dirname, 'texto_estatico_informe.txt');
                 if (fs.existsSync(staticPathFile)) {
                     const staticContent = fs.readFileSync(staticPathFile, 'utf8');
-                    text += '\n\n' + staticContent;
+                    res.write(`data: ${JSON.stringify({ text: '\n\n' + staticContent })}\n\n`);
                 }
             } catch (err) {
                 console.error("Error leyendo texto_estatico_informe.txt", err);
             }
         }
 
-        res.json({ report: text });
+        res.write('data: [DONE]\n\n');
+        res.end();
 
     } catch (error) {
         console.error("Error generando reporte:", error);

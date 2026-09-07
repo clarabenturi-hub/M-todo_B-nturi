@@ -21,6 +21,12 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
   const [result, setResult] = useState(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [showProcedimientoDialog, setShowProcedimientoDialog] = useState(false)
+  
+  // Streaming states
+  const [streamedReport, setStreamedReport] = useState('')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [streamError, setStreamError] = useState(false)
+
   const streamTimer = useRef(null)
 
   const timeLockOptions = tList('fase1','opciones_candado',['En las próximas 78 horas'])
@@ -34,19 +40,58 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     setCardModalIndex(null)
   }
 
-  const handleDownloadPdf = async () => {
-    setIsGeneratingPdf(true);
+  const startStreamingReport = async (resData) => {
+    setIsStreaming(true);
+    setStreamedReport('');
+    setStreamError(false);
     try {
       const resp = await fetch('/api/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, result })
+        body: JSON.stringify({ question, result: resData })
       });
       if (!resp.ok) throw new Error('Error en la API');
-      const data = await resp.json();
-      await generarPDFDesdeMarkdown(data.report, "Informe_Cuantico_Benturi.pdf");
+      
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+      let fullText = '';
+      
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                fullText += data.text;
+                setStreamedReport(fullText);
+              } catch(e) {}
+            }
+          }
+        }
+      }
     } catch(err) {
-      alert("Hubo un error al generar el informe. Verifica tu conexión e inténtalo de nuevo.");
+      setStreamError(true);
+      console.error(err);
+    } finally {
+      setIsStreaming(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      if (streamedReport) {
+        await generarPDFDesdeMarkdown(streamedReport, "Informe_Cuantico_Benturi.pdf");
+      } else {
+        alert("El informe aún no se ha generado correctamente.");
+      }
+    } catch(err) {
+      alert("Hubo un error al generar el PDF.");
       console.error(err);
     } finally {
       setIsGeneratingPdf(false);
@@ -89,7 +134,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
         const c13 = filled[12].spanishName, c14 = filled[13].spanishName
         const c19 = filled[18].spanishName, c20 = filled[19].spanishName
 
-        setResult({
+        const newResult = {
           question,
           timeLock,
           cards: filled,
@@ -98,7 +143,9 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
           q2: getMeaning(c7, c8),
           q3: getMeaning(c13, c14),
           q4: getMeaning(c19, c20),
-        })
+        };
+        setResult(newResult);
+        startStreamingReport(newResult);
       }, 800)
     }, 3000)
   }
@@ -209,45 +256,57 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
          <button className="btn-primary" onClick={handleProject} disabled={!question.trim()}>PROTOCOLO EXPRESS DE CALIBRACIÓN: MATRIZ DE 24 VECTORES-CARTAS</button>
 
          {result && (
-           <Dialog 
-             title="PROYECCIÓN PROFUNDA DE 24 VECTORES" 
-             onClose={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setQuestion(''); }}
-             actions={
-               <div className="stack" style={{width: '100%', gap: '8px'}}>
-                 <button
-                   className="btn-primary"
-                   style={{width: '100%', margin: 0, background: 'var(--magenta-primary)', color: 'white', border: 'none'}}
-                   onClick={handleDownloadPdf}
-                   disabled={isGeneratingPdf}
-                 >
-                   {isGeneratingPdf ? 'GENERANDO INFORME...' : 'OBTENER INFORME CUÁNTICO (PDF)'}
-                 </button>
-                 <button
-                   className="btn-secondary"
-                   style={{width: '100%', margin: 0, opacity: 0.8, fontSize: '11px'}}
-                   onClick={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setQuestion(''); }}
-                 >
-                   CERRAR Y HACER OTRA PREGUNTA
-                 </button>
-               </div>
-             }
-           >
-             <div>
-                <p style={{fontStyle:'italic', marginBottom:'16px', opacity: 0.8}}>
-                  Consulta analizada: <strong style={{color: 'var(--blue-accent)'}}>"{result.question}"</strong>
-                </p>
-                <div className="glass-card-light" style={{padding: '16px', marginBottom: '16px'}}>
-                  <p style={{color: '#FFFFFF', lineHeight: '1.6', fontSize: '14px', margin: 0}}>
-                    El Algoritmo Bénturi ha interceptado y decodificado los 24 vectores probabilísticos (4 cuadrantes) en relación a tu consulta basándose en las complejas secuencias matemáticas de las cartas ingresadas. 
-                    <br/><br/>
-                    La proyección de altísima probabilidad está ahora alineada en el campo cuántico.
-                  </p>
+            <Dialog 
+              title="INFORME CUÁNTICO EN TIEMPO REAL" 
+              onClose={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setQuestion(''); setStreamedReport(''); }}
+              actions={
+                <div className="stack" style={{width: '100%', gap: '8px'}}>
+                  <button
+                    className="btn-primary"
+                    style={{width: '100%', margin: 0, background: isStreaming ? 'grey' : 'var(--magenta-primary)', color: 'white', border: 'none'}}
+                    onClick={handleDownloadPdf}
+                    disabled={isGeneratingPdf || isStreaming || streamError}
+                  >
+                    {isStreaming ? 'ESCRIBIENDO INFORME...' : (isGeneratingPdf ? 'GENERANDO PDF...' : 'DESCARGAR INFORME (PDF)')}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{width: '100%', margin: 0, opacity: 0.8, fontSize: '11px'}}
+                    onClick={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setQuestion(''); setStreamedReport(''); }}
+                  >
+                    CERRAR Y HACER OTRA PREGUNTA
+                  </button>
                 </div>
-                <p className="mt-16" style={{fontWeight:'700', color:'var(--blue-mid)'}}>
-                  Conclusión: La información analizada está lista. Para leer el resultado detallado con las instrucciones prácticas (Los 3 Poderes), descarga tu informe a continuación.
-                </p>
-              </div>
-            </Dialog>
+              }
+            >
+              <div>
+                 <p style={{fontStyle:'italic', marginBottom:'16px', opacity: 0.8}}>
+                   Consulta analizada: <strong style={{color: 'var(--blue-accent)'}}>"{result.question}"</strong>
+                 </p>
+                 
+                 <div className="glass-card-light" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', textAlign: 'left', whiteSpace: 'pre-wrap', color: '#FFFFFF', fontSize: '13px', lineHeight: '1.5', fontFamily: 'monospace'}}>
+                   {streamError ? (
+                     <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
+                   ) : (
+                     <>
+                       {streamedReport || 'Conectando con la IA cuántica...'}
+                       {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
+                     </>
+                   )}
+                 </div>
+                 
+                 {!isStreaming && !streamError && (
+                   <p className="mt-16" style={{fontWeight:'700', color:'var(--blue-mid)'}}>
+                     El informe ha sido completado con éxito. Ahora puedes descargarlo en formato PDF.
+                   </p>
+                 )}
+                 {isStreaming && !streamError && (
+                   <p className="mt-16" style={{fontWeight:'700', color:'var(--green-accent)'}}>
+                     Generando respuesta cuántica en tiempo real...
+                   </p>
+                 )}
+               </div>
+             </Dialog>
          )}
 
          {cardModalIndex !== null && (
