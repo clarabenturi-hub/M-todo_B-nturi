@@ -438,7 +438,7 @@ app.post('/api/generate-report', async (req, res) => {
         while (retries > 0 && !success) {
             try {
                 const model = genAI.getGenerativeModel({ 
-                    model: 'gemini-2.5-flash', 
+                    model: 'gemini-3.1-pro-preview', 
                     systemInstruction: systemPrompt,
                     generationConfig: { temperature: 0.0, topP: 1 }
                 });
