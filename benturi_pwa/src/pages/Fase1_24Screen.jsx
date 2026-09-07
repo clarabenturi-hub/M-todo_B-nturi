@@ -284,7 +284,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
                    Consulta analizada: <strong style={{color: 'var(--blue-accent)'}}>"{result.question}"</strong>
                  </p>
                  
-                 <div className="glass-card-light" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', textAlign: 'left', whiteSpace: 'pre-wrap', color: '#FFFFFF', fontSize: '13px', lineHeight: '1.5', fontFamily: 'monospace'}}>
+                 <div className="glass-card-light custom-scroll-container" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', whiteSpace: 'pre-wrap', color: '#FFFFFF', fontSize: '13px', lineHeight: '1.5', fontFamily: 'monospace'}}>
                    {streamError ? (
                      <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
                    ) : (

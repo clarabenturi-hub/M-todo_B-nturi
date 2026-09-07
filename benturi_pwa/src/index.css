@@ -42,6 +42,27 @@ button, input, textarea, select { font: inherit; cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.5; }
 input, textarea { cursor: text; }
 
+/* ===== CUSTOM SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.6);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--violet-glow);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 229, 255, 0.6) rgba(15, 23, 42, 0.4);
+}
+
 /* ===== LAYOUT ===== */
 .app-root {
   position: relative;
