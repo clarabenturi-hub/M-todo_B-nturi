@@ -288,10 +288,14 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
                    {streamError ? (
                      <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
                    ) : (
-                     <>
-                       {streamedReport || 'Conectando con la IA cuántica...'}
-                       {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
-                     </>
+                      <>
+                        {streamedReport ? (
+                          <div dangerouslySetInnerHTML={{ __html: streamedReport }} style={{ display: 'inline' }} />
+                        ) : (
+                          'Conectando con la IA cuántica...'
+                        )}
+                        {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
+                      </>
                    )}
                  </div>
                  
