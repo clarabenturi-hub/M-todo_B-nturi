@@ -26,6 +26,7 @@ export default function Fase1Screen() {
   const [streamedReport, setStreamedReport] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamError, setStreamError] = useState(false)
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
 
   const streamTimer = useRef(null)
 
@@ -148,6 +149,26 @@ export default function Fase1Screen() {
   }
 
   useEffect(() => () => clearInterval(streamTimer.current), [])
+
+  const loadingMessages = [
+    "Sintonizando tu frecuencia vibracional...",
+    "Decodificando 329 billones de probabilidades...",
+    "Alineando vectores con el Primer Poder...",
+    "Analizando correlaciones energéticas...",
+    "Estructurando tu Hoja de Ruta..."
+  ];
+
+  useEffect(() => {
+    let interval;
+    if (isStreaming && !streamedReport) {
+      interval = setInterval(() => {
+        setLoadingMsgIndex((prev) => (prev + 1) % loadingMessages.length);
+      }, 6000);
+    } else {
+      setLoadingMsgIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [isStreaming, streamedReport]);
 
   const alreadySelected = selectedCards.filter(Boolean)
   const timeLockList = timeLockOptions.length > 0 ? timeLockOptions : ['En las próximas 78 horas']
@@ -291,7 +312,7 @@ export default function Fase1Screen() {
                 <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
               ) : (
                 <>
-                  {streamedReport || 'Conectando con la IA cuántica...'}
+                  {streamedReport || loadingMessages[loadingMsgIndex]}
                   {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
                 </>
               )}
