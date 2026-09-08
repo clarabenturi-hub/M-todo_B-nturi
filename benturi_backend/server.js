@@ -319,7 +319,7 @@ app.post('/api/redsys-webhook', (req, res) => {
     }
 });
 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@google/generative-ai");
 const PDFDocument = require("pdfkit");
 const fs = require('fs');
 const path = require('path');
@@ -440,7 +440,13 @@ app.post('/api/generate-report', async (req, res) => {
                 const model = genAI.getGenerativeModel({ 
                     model: 'gemini-3.6-flash', 
                     systemInstruction: systemPrompt,
-                    generationConfig: { temperature: 0.0, topP: 1 }
+                    generationConfig: { temperature: 0.0, topP: 1 },
+                    safetySettings: [
+                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    ]
                 });
                 
                 const aiResponse = await model.generateContentStream(contextText);
