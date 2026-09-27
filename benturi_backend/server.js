@@ -334,7 +334,7 @@ app.post('/api/generate-report', async (req, res) => {
         }
         
         const genAI = new GoogleGenerativeAI(apiKey);
-        const promptFile = path.join(__dirname, 'prompt_generacion.txt');
+        const promptFile = path.join(__dirname, '../Informe Usuario .txt');
         const systemPrompt = fs.readFileSync(promptFile, 'utf8');
         
         // Leer base de conocimientos de combinaciones y significados deterministas
@@ -364,27 +364,39 @@ app.post('/api/generate-report', async (req, res) => {
             return "Información no encontrada en la base determinista.";
         };
 
-        const formatComboStr = (c1, c2) => {
-            if (!c1 || !c2) return null;
+        // Función genérica para validar arrays de cartas (dobles, triples o cuádruples)
+        const checkCombination = (cardsArray, positionsArray) => {
+            if (cardsArray.some(c => !c)) return null;
+            
+            const normalizedInput = cardsArray.map(normalizeCard);
+            
             const match = kb.combinaciones?.find(c => {
                 const parts = c.combinacion.toLowerCase().split('+').map(p => p.trim().replace('.', ''));
-                if (parts.length >= 2) {
-                   const p1 = normalizeCard(parts[0]);
-                   const p2 = normalizeCard(parts[1]);
-                   const n1 = normalizeCard(c1);
-                   const n2 = normalizeCard(c2);
-                   return (p1 === n1 && p2 === n2) || (p1 === n2 && p2 === n1);
+                if (parts.length === normalizedInput.length) {
+                    // Comprobación directa exacta (1 a 1 en el mismo orden)
+                    const isDirectMatch = parts.every((p, index) => normalizeCard(p) === normalizedInput[index]);
+                    if (isDirectMatch) return true;
+                    
+                    // Si es doble, permitimos el cruce inverso
+                    if (parts.length === 2) {
+                        const isReverseMatch = normalizeCard(parts[0]) === normalizedInput[1] && normalizeCard(parts[1]) === normalizedInput[0];
+                        if (isReverseMatch) return true;
+                    }
                 }
                 return false;
             });
+
             if (match) {
-                return `[${c1} + ${c2}]: ${match.significado}`;
+                const posStr = positionsArray.join(' + ');
+                const cardStr = cardsArray.map(c => `Vector carta ${c}`).join(' + ');
+                return `Asociación [${posStr}] (${cardStr}): ${match.significado}`;
             }
             return null;
         };
 
         let contextText = "";
         let vectoresArray = [];
+        let combosReales = [];
 
         if (result.q1) {
             // Matriz 24
@@ -396,37 +408,72 @@ app.post('/api/generate-report', async (req, res) => {
             ];
             contextText = `TIPO DE MATRIZ: Matriz Express de 24 Vectores\nPREGUNTA DEL USUARIO: ${question}\n\nDATOS EXTRAÍDOS (Resumen por Cuadrantes):\n${JSON.stringify(vectoresArray, null, 2)}`;
         } else {
-            // Matriz 6
+            // Matriz 6 - Mapeo de Posiciones Algoritmo Bénturi (C1, C3, C5, C7, C9, C11)
             vectoresArray = [
-                { posicion: "Situación Inicial", cartas: `${result.c1}, ${result.c2}`, info_c1: getDeterministicInfo(result.c1), info_c2: getDeterministicInfo(result.c2) },
-                { posicion: "Desarrollo", cartas: `${result.c3}, ${result.c4}`, info_c3: getDeterministicInfo(result.c3), info_c4: getDeterministicInfo(result.c4) },
-                { posicion: "Desenlace", cartas: `${result.c5}, ${result.c6}`, info_c5: getDeterministicInfo(result.c5), info_c6: getDeterministicInfo(result.c6) }
+                { posicion: "Posición C1 (Carta 1)", nombre_carta: result.c1, significado_determinista: getDeterministicInfo(result.c1) },
+                { posicion: "Posición C3 (Carta 2)", nombre_carta: result.c2, significado_determinista: getDeterministicInfo(result.c2) },
+                { posicion: "Posición C5 (Carta 3)", nombre_carta: result.c3, significado_determinista: getDeterministicInfo(result.c3) },
+                { posicion: "Posición C7 (Carta 4)", nombre_carta: result.c4, significado_determinista: getDeterministicInfo(result.c4) },
+                { posicion: "Posición C9 (Carta 5)", nombre_carta: result.c5, significado_determinista: getDeterministicInfo(result.c5) },
+                { posicion: "Posición C11 (Carta 6)", nombre_carta: result.c6, significado_determinista: getDeterministicInfo(result.c6) }
             ];
 
-            const combosReales = [
-                formatComboStr(result.c1, result.c2),
-                formatComboStr(result.c2, result.c3),
-                formatComboStr(result.c3, result.c4),
-                formatComboStr(result.c4, result.c5),
-                formatComboStr(result.c5, result.c6)
-            ].filter(x => x);
+            // 1. CUÁDRUPLES (Hacia adelante)
+            const cuadruples = [
+                [{c: result.c1, p: "C1"}, {c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}],
+                [{c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}],
+                [{c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}, {c: result.c6, p: "C11"}]
+            ];
 
-            let extraFormatText = "REGLA DE FORMATO OBLIGATORIO Y ESTRICTO AL INICIO DEL REPORTE:\n";
-            extraFormatText += "Pondrás por escrito exactamente lo siguiente antes de empezar el análisis detallado:\n";
-            extraFormatText += `1 [Primera carta: ${result.c1 || 'N/A'}]\n`;
-            extraFormatText += `2 [Segunda carta: ${result.c2 || 'N/A'}]\n`;
-            extraFormatText += `3 [Tercera carta: ${result.c3 || 'N/A'}]\n`;
-            extraFormatText += `4 [Cuarta carta: ${result.c4 || 'N/A'}]\n`;
-            extraFormatText += `5 [Quinta carta: ${result.c5 || 'N/A'}]\n`;
-            extraFormatText += `6 [Sexta carta: ${result.c6 || 'N/A'}]\n\n`;
-            extraFormatText += `Asociaciones resultantes válidas:\n`;
+            // 2. TRIPLES (Hacia adelante)
+            const triples = [
+                [{c: result.c1, p: "C1"}, {c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}],
+                [{c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}],
+                [{c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}],
+                [{c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}, {c: result.c6, p: "C11"}]
+            ];
+
+            // 3. DOBLES (Hacia adelante)
+            const dobles = [
+                [{c: result.c1, p: "C1"}, {c: result.c2, p: "C3"}],
+                [{c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}],
+                [{c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}],
+                [{c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}],
+                [{c: result.c5, p: "C9"}, {c: result.c6, p: "C11"}]
+            ];
+
+            // 4. DOBLES INVERSAS (Hacia atrás)
+            const doblesInversas = [
+                [{c: result.c6, p: "C11"}, {c: result.c5, p: "C9"}],
+                [{c: result.c5, p: "C9"}, {c: result.c4, p: "C7"}],
+                [{c: result.c4, p: "C7"}, {c: result.c3, p: "C5"}],
+                [{c: result.c3, p: "C5"}, {c: result.c2, p: "C3"}],
+                [{c: result.c2, p: "C3"}, {c: result.c1, p: "C1"}]
+            ];
+
+            // Procesar todos los grupos
+            [cuadruples, triples, dobles, doblesInversas].forEach(group => {
+                group.forEach(seq => {
+                    const cards = seq.map(s => s.c);
+                    const pos = seq.map(s => s.p);
+                    const matchStr = checkCombination(cards, pos);
+                    if (matchStr) combosReales.push(matchStr);
+                });
+            });
+
+            let extractedDataText = "DATOS EXTRAÍDOS DEL BACKEND PARA EL INFORME:\n";
+            extractedDataText += `PREGUNTA DEL CONSULTANTE: ${question}\n\n`;
+            extractedDataText += `0.1 & 0.3 "SIGNIFICADO DETERMINISTA DE CADA VECTOR CARTA":\n`;
+            extractedDataText += JSON.stringify(vectoresArray, null, 2) + "\n\n";
+            extractedDataText += `0.2 "ALGORITMO ASOCIACIONES DE CARTAS MÉTODO BÉNTURI" (LISTADO DE ASOCIACIONES DE CARTAS ENCONTRADAS):\n`;
+            
             if (combosReales.length > 0) {
-                extraFormatText += combosReales.join("\n") + "\n\n";
+                extractedDataText += combosReales.join("\n") + "\n\n";
             } else {
-                extraFormatText += "(Ninguna asociación contigua válida encontrada)\n\n";
+                extractedDataText += "(Ninguna asociación contigua válida encontrada)\n\n";
             }
 
-            contextText = extraFormatText + `TIPO DE MATRIZ: Matriz de 6 Vectores\nPREGUNTA DEL USUARIO: ${question}\n\nVECTORES BASE CON INFORMACIÓN DETERMINISTA DE LA BASE DE DATOS:\n${JSON.stringify(vectoresArray, null, 2)}\n\n`;
+            contextText = extractedDataText + `\nInstrucción: Genera el informe final rellenando la estructura de tu prompt base (INFORME USUARIO) utilizando únicamente los datos aquí proporcionados. Recuerda usar la nomenclatura de posiciones (C1, C3, C5, C7, C9, C11) al referirte a las cartas.`;
         }
 
         res.setHeader('Content-Type', 'text/event-stream');
@@ -438,7 +485,7 @@ app.post('/api/generate-report', async (req, res) => {
         while (retries > 0 && !success) {
             try {
                 const model = genAI.getGenerativeModel({ 
-                    model: 'gemini-3.6-flash', 
+                    model: 'gemini-3.8-flash', 
                     systemInstruction: systemPrompt,
                     generationConfig: { temperature: 0.0, topP: 1 },
                     safetySettings: [
