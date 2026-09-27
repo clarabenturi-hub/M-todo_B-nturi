@@ -137,7 +137,7 @@ async function testInforme() {
     const contextText = extractedDataText + `\nInstrucción: Genera el informe final rellenando la estructura de tu prompt base (INFORME USUARIO) utilizando únicamente los datos aquí proporcionados. Recuerda usar la nomenclatura de posiciones (C1, C3, C5, C7, C9, C11) al referirte a las cartas.`;
 
     const model = genAI.getGenerativeModel({ 
-        model: 'gemini-3.8-flash', 
+        model: 'gemini-3.7-flash', 
         systemInstruction: systemPrompt,
         generationConfig: { temperature: 0.0 }
     });
