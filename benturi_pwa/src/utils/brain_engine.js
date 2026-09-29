@@ -1,5 +1,6 @@
 import kbData from '../data/base_conocimiento_cartas.json';
 import detData from '../data/base_determinista_cartas.json';
+import { FULL_DECK } from '../constants/appData.js';
 
 const normalizeCard = (name) => name ? name.toLowerCase().replace(/ de /g, ' ').trim() : '';
 
@@ -10,6 +11,13 @@ const getCardMeaning = (cardName) => {
     if (!foundKey) return `Significado no encontrado para ${cardName}`;
     const info = detData.cartas[foundKey];
     return `\n\n**Amor y Relaciones**: ${info.Amor || 'N/A'}\n\n**Trabajo y Profesión**: ${info.Trabajo || 'N/A'}\n\n**Dinero y Finanzas**: ${info.Dinero || 'N/A'}\n\n**Salud y Bienestar**: ${info.Salud || 'N/A'}\n\n**Evolución Personal y Decisiones**: ${info.Evolucion || 'N/A'}\n`;
+};
+
+const getCardImage = (cardName) => {
+    if (!cardName) return '';
+    const normName = normalizeCard(cardName);
+    const card = FULL_DECK.find(c => normalizeCard(c.spanishName) === normName);
+    return card ? card.img : '';
 };
 
 const checkCombo = (c1, c2) => {
@@ -67,6 +75,25 @@ export const generateDeterministicReport = (question, result) => {
     let allCards = [];
     let individualAnalysis = "";
     let combos = [];
+
+    if (!result.q1 && result.c1) {
+        markdown += `### MATRIZ DE VECTORES PROBABILÍSTICOS (TIRADA DE 6 CARTAS) 📌\n\n`;
+        const c1img = getCardImage(result.c1);
+        const c2img = getCardImage(result.c2);
+        const c3img = getCardImage(result.c3);
+        const c4img = getCardImage(result.c4);
+        const c5img = getCardImage(result.c5);
+        const c6img = getCardImage(result.c6);
+        
+        markdown += `| Carta 1 | Carta 2 | Carta 3 |\n`;
+        markdown += `| :---: | :---: | :---: |\n`;
+        markdown += `| ![](${c1img})<br>**${result.c1}** | ![](${c2img})<br>**${result.c2}** | ![](${c3img})<br>**${result.c3}** |\n\n`;
+        
+        markdown += `| Carta 4 | Carta 5 | Carta 6 |\n`;
+        markdown += `| :---: | :---: | :---: |\n`;
+        markdown += `| ![](${c4img})<br>**${result.c4}** | ![](${c5img})<br>**${result.c5}** | ![](${c6img})<br>**${result.c6}** |\n\n`;
+        markdown += `---\n\n`;
+    }
 
     // 2. ANÁLISIS INDIVIDUAL
     markdown += `### 2. ANÁLISIS INDIVIDUAL DE CADA VECTOR-CARTA RESPECTO A LA PREGUNTA 📌\n\n`;

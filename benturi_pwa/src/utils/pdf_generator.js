@@ -55,6 +55,23 @@ export async function generarPDFDesdeMarkdown(markdownText, filename = null) {
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
+        img { 
+          max-width: 100px; 
+          height: auto; 
+          border-radius: 4px; 
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          display: block;
+          margin: 0 auto;
+        }
+        table {
+          width: 100%;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        td {
+          padding: 10px;
+          vertical-align: top;
+        }
       </style>
     </head>
     <body>
