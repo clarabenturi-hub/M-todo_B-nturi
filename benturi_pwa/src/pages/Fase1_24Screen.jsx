@@ -216,7 +216,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     }
   }
 
-  if (user?.isPremium) {
+  if (true || user?.isPremium) {
     return (
        <div className="page stack">
          <div className="glass-card-light" style={{textAlign:'center'}}>
