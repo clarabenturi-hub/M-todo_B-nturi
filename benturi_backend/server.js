@@ -341,11 +341,34 @@ app.post('/api/generate-report', async (req, res) => {
         
         // Leer base de conocimientos de combinaciones y significados deterministas
         const kbPath = path.join(__dirname, 'base_conocimiento_cartas.json');
+        const txtKbPath = path.join(__dirname, '../pROMTS/base_conocimiento_cartas.txt');
         const detPath = path.join(__dirname, 'base_determinista_cartas.json');
         
         let kb = { significado_cartas: [], combinaciones: [] };
         let det = { cartas: {}, textos_fijos: {} };
         
+        const mergeKnowledgeBase = (sourceKb, sourceText) => {
+            const normalized = new Map();
+            const allCombos = [
+                ...(sourceKb?.combinaciones || []),
+                ...(sourceText || [])
+            ];
+
+            for (const combo of allCombos) {
+                if (!combo || !combo.combinacion) continue;
+                const key = normalizeCard(combo.combinacion);
+                if (!key) continue;
+                if (!normalized.has(key)) {
+                    normalized.set(key, combo);
+                }
+            }
+
+            return {
+                ...sourceKb,
+                combinaciones: Array.from(normalized.values())
+            };
+        };
+
         try {
             kb = JSON.parse(fs.readFileSync(kbPath, 'utf8'));
             det = JSON.parse(fs.readFileSync(detPath, 'utf8'));
@@ -353,7 +376,62 @@ app.post('/api/generate-report', async (req, res) => {
             console.error("No se pudo leer bases de conocimiento JSON", e);
         }
 
-        const normalizeCard = (name) => name ? name.toLowerCase().replace(/ de /g, ' ').trim() : '';
+        try {
+            if (fs.existsSync(txtKbPath)) {
+                const txtRows = fs.readFileSync(txtKbPath, 'utf8')
+                    .split(/\r?\n/)
+                    .map(line => line.trim())
+                    .filter(line => line.includes('+') && line.includes('='));
+
+                const parsedTextCombos = txtRows.map(line => {
+                    const cleaned = line.replace(/^[•\-*\s]+/, '');
+                    const [combinacion, ...rest] = cleaned.split('=');
+                    const significado = rest.join('=').trim();
+                    const paloOrigen = combinacion.toLowerCase().includes('espadas')
+                        ? 'espadas'
+                        : combinacion.toLowerCase().includes('copas')
+                            ? 'copas'
+                            : combinacion.toLowerCase().includes('oros')
+                                ? 'oros'
+                                : combinacion.toLowerCase().includes('bastos')
+                                    ? 'bastos'
+                                    : 'desconocido';
+
+                    return {
+                        palo_origen: paloOrigen,
+                        combinacion: combinacion.trim(),
+                        significado
+                    };
+                });
+
+                kb = mergeKnowledgeBase(kb, parsedTextCombos);
+            }
+        } catch (e) {
+            console.warn('No se pudo cargar la base de conocimiento de texto', e);
+        }
+
+        const normalizeCard = (name) => {
+            if (!name) return '';
+            return String(name)
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/\./g, ' ')
+                .replace(/\b(caballero|caballo)\b/g, 'caballo')
+                .replace(/\b(nueve|9)\b/g, '9')
+                .replace(/\b(ocho|8)\b/g, '8')
+                .replace(/\b(siete|7)\b/g, '7')
+                .replace(/\b(seis|6)\b/g, '6')
+                .replace(/\b(cinco|5)\b/g, '5')
+                .replace(/\b(cuatro|4)\b/g, '4')
+                .replace(/\b(tres|3)\b/g, '3')
+                .replace(/\b(dos|2)\b/g, '2')
+                .replace(/\b(as|1)\b/g, '1')
+                .replace(/\bde\b|\bdel\b|\bda\b|\by\b/g, ' ')
+                .replace(/[^a-z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        };
         
         const getDeterministicInfo = (cardName) => {
             if (!cardName) return "Sin carta";
@@ -373,18 +451,26 @@ app.post('/api/generate-report', async (req, res) => {
             const normalizedInput = cardsArray.map(normalizeCard);
             
             const match = kb.combinaciones?.find(c => {
-                const parts = c.combinacion.toLowerCase().split('+').map(p => p.trim().replace('.', ''));
-                if (parts.length === normalizedInput.length) {
-                    // Comprobación directa exacta (1 a 1 en el mismo orden)
-                    const isDirectMatch = parts.every((p, index) => normalizeCard(p) === normalizedInput[index]);
-                    if (isDirectMatch) return true;
-                    
-                    // Si es doble, permitimos el cruce inverso
-                    if (parts.length === 2) {
-                        const isReverseMatch = normalizeCard(parts[0]) === normalizedInput[1] && normalizeCard(parts[1]) === normalizedInput[0];
-                        if (isReverseMatch) return true;
-                    }
+                const parts = c.combinacion
+                    .toLowerCase()
+                    .split('+')
+                    .map(p => p.trim().replace(/\./g, ' '));
+                const normalizedParts = parts.map(normalizeCard);
+
+                if (normalizedParts.length !== normalizedInput.length) return false;
+
+                const directMatch = normalizedParts.every((p, index) => p === normalizedInput[index]);
+                if (directMatch) return true;
+
+                const sortedInput = [...normalizedInput].sort();
+                const sortedParts = [...normalizedParts].sort();
+                if (sortedInput.join('|') === sortedParts.join('|')) return true;
+
+                if (normalizedParts.length === 2) {
+                    const reverseMatch = normalizedParts[0] === normalizedInput[1] && normalizedParts[1] === normalizedInput[0];
+                    if (reverseMatch) return true;
                 }
+
                 return false;
             });
 

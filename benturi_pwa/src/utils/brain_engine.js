@@ -2,7 +2,28 @@ import kbData from '../data/base_conocimiento_cartas.json';
 import detData from '../data/base_determinista_cartas.json';
 import { FULL_DECK } from '../constants/appData.js';
 
-const normalizeCard = (name) => name ? name.toLowerCase().replace(/ de /g, ' ').trim() : '';
+const normalizeCard = (name) => {
+    if (!name) return '';
+    return String(name)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\./g, ' ')
+        .replace(/\b(caballero|caballo)\b/g, 'caballo')
+        .replace(/\b(nueve|9)\b/g, '9')
+        .replace(/\b(ocho|8)\b/g, '8')
+        .replace(/\b(siete|7)\b/g, '7')
+        .replace(/\b(seis|6)\b/g, '6')
+        .replace(/\b(cinco|5)\b/g, '5')
+        .replace(/\b(cuatro|4)\b/g, '4')
+        .replace(/\b(tres|3)\b/g, '3')
+        .replace(/\b(dos|2)\b/g, '2')
+        .replace(/\b(as|1)\b/g, '1')
+        .replace(/\bde\b|\bdel\b|\bda\b|\by\b/g, ' ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+};
 
 const getCardMeaning = (cardName) => {
     if (!cardName) return null;
@@ -23,13 +44,17 @@ const getCardImage = (cardName) => {
 const checkCombo = (c1, c2) => {
     if (!c1 || !c2) return null;
     const match = kbData.combinaciones?.find(c => {
-        const parts = c.combinacion.toLowerCase().split('+').map(p => p.trim().replace('.', ''));
+        const parts = c.combinacion
+            .toLowerCase()
+            .split('+')
+            .map(p => p.trim().replace(/\./g, ' '));
         if (parts.length >= 2) {
-            const p1 = normalizeCard(parts[0]);
-            const p2 = normalizeCard(parts[1]);
+            const normalizedParts = parts.map(normalizeCard);
             const n1 = normalizeCard(c1);
             const n2 = normalizeCard(c2);
-            return (p1 === n1 && p2 === n2) || (p1 === n2 && p2 === n1);
+            const direct = normalizedParts[0] === n1 && normalizedParts[1] === n2;
+            const reverse = normalizedParts[0] === n2 && normalizedParts[1] === n1;
+            return direct || reverse;
         }
         return false;
     });
