@@ -15,7 +15,7 @@ SI LA PROYECCIÓN DE ALTÍSIMA PROBABILIDAD NO TE GUSTA... CAMBIÁLA CON EL PODE
 <u>PROYECCIÓN FUTURO ALTISIMA PROBABILIDAD MÉTODO BÉNTURI 24 VECTORES CARTAS. 322 BILLONES DE PROBABILIDADES</u>
 
 <u>ANÁLISIS DETERMINISTA VECTOR A VECTOR POR FILAS</u>
-(En este apartado, extrae y analiza únicamente las cartas relevantes para la historia. NO inventes significados, usa estrictamente los proporcionados. Añade abundantes emoticonos visuales.)
+(En este apartado, extrae y analiza las cartas relevantes para la historia. Toma EXCLUSIVAMENTE la información de los valores deterministas, pero en lugar de copiarla literalmente, interprétala y redáctala de forma fluida, analógica y cercana, adaptándola al contexto. Añade abundantes emoticonos visuales.)
 
 FILA 1: [TÍTULO DESCRIPTIVO DE LA FILA 1 CON EMOTICONOS]
 [Vector] [Nombre Carta]: [Significado determinista en el contexto de la lectura o según la asociación encontrada]
@@ -32,7 +32,7 @@ FILA 4: [TÍTULO DESCRIPTIVO DE LA FILA 4 CON EMOTICONOS]
 
 <u>CRÓNICA EVOLUTIVA: EL RELATO CONTINUO DE LA TRAYECTORIA</u>
 CAPÍTULO I: [TÍTULO] [Emoticonos]
-[Relato integrado usando las cartas y asociaciones de las primeras etapas. Debes mencionar las asociaciones en formato (Carta 1 + Carta 2) dentro del texto]
+[Relato integrado usando las cartas y asociaciones extraídas. ATENCIÓN: Si no se han encontrado asociaciones predefinidas válidas en esta zona de la matriz, NO te quedes en blanco. DEBES analizar y entrelazar tú mismo el flujo de energía cuántica basándote en la suma de los valores deterministas individuales de esas cartas. Menciona las combinaciones clave en formato (Carta 1 + Carta 2) dentro del texto]
 
 CAPÍTULO II: [TÍTULO] [Emoticonos]
 [Relato integrado...]

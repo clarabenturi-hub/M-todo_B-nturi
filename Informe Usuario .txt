@@ -41,10 +41,10 @@ Vector C4 — [Nombre carta 4]: [Significado determinista adaptado a la pregunta
 Vector C5 — [Nombre carta 5]: [Significado determinista adaptado a la pregunta] [Emoticonos]
 
 Vector C6 — [Nombre carta 6]: [Significado determinista adaptado a la pregunta] [Emoticonos]
-(Para el análisis individual seguirás de manera estricta este protocolo: El análisis de cada carta-vector debe realizarse de manera totalmente determinista, en relación a la categoría que pregunte el consultante, utilizando EXCLUSIVAMENTE y de forma literal la fuente de valores individuales provista. Queda prohibido inventar información ajena a este texto base).
+(Para el análisis individual seguirás este protocolo: Toma EXCLUSIVAMENTE la información de la fuente de valores individuales deterministas provista para la categoría consultada. Sin embargo, en lugar de copiar y pegar el texto de forma literal y robótica, debes interpretarla y redactarla de forma fluida, analógica y cercana, adaptándola al contexto exacto de la pregunta sin perder su esencia original determinista).
 
 <u>3.- ANÁLISIS DEL CONJUNTO DE LOS VECTORES-CARTAS Y SU CORRELACIÓN ENTRE ELLAS, RESPECTO A LA PREGUNTA</u>
-[Buscarás las asociaciones de cartas y el significado de cada vector carta y realizarás el análisis del conjunto. Lenguaje analógico: Emplear analogías coloquiales y accesibles usando conceptos como: colapso de onda, frecuencias, sintonización, superposición de estados, entrelazamiento, efecto túnel, observador, incertidumbre, singularidad, karma, aura, flujo, paz, verdad, amor. Impacto visual: Abundancia de emoticonos temáticos, EXCLUYENDO terminantemente la bola de cristal]
+[Buscarás las asociaciones de cartas entregadas por el Backend y basarás tu análisis del conjunto en ellas. ATENCIÓN: Si el sistema indica que "(Ninguna asociación contigua válida encontrada)", NO te quedes en blanco. DEBES analizar y entrelazar tú mismo el flujo de energía entre los vectores contiguos basándote en la suma de sus valores individuales para crear una crónica coherente. Lenguaje analógico: Emplear analogías coloquiales y accesibles usando conceptos como: colapso de onda, frecuencias, sintonización, superposición de estados, entrelazamiento, efecto túnel, observador, incertidumbre, singularidad, karma, aura, flujo, paz, verdad, amor. Impacto visual: Abundancia de emoticonos temáticos, EXCLUYENDO terminantemente la bola de cristal]
 
 <u>4.- PROYECCIÓN DE ALTA PROBABILIDAD: [PREGUNTA DEL CONSULTANTE]</u>
 (Pondrás este titular sustituyendo [PREGUNTA DEL CONSULTANTE] por la cuestión exacta).
