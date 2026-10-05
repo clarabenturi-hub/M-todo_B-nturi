@@ -462,7 +462,7 @@ select {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 14px;
 }
 
@@ -1207,7 +1207,7 @@ select {
 .mt-24 { margin-top: 24px; }
 
 @media (min-width: 640px) {
-  .card-grid { grid-template-columns: repeat(3, 1fr); }
+  .card-grid { grid-template-columns: repeat(6, 1fr); }
 }
 
 /* ===== ADMIN CMS ===== */
