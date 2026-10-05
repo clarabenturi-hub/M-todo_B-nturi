@@ -1,6 +1,8 @@
 // Módulo de generación de PDF para PWA Matriz de Vectores
 // Requiere marked.js importado en tu proyecto (html2pdf ya no es necesario)
 
+import { marked } from 'marked';
+
 /**
  * Convierte el Markdown retornado por el LLM y utiliza el diálogo de impresión
  * nativo del dispositivo para generar el PDF. (Evita cuelgues en móviles)
@@ -8,16 +10,16 @@
  * @param {string} filename - Nombre opcional
  */
 export async function generarPDFDesdeMarkdown(markdownText, filename = null) {
-  if (typeof window.marked === 'undefined') {
-    console.error('La librería marked.js no está cargada en window.');
-    alert('Error: marked.js no cargado');
-    return;
-  }
-
   console.log("Abriendo diálogo nativo para generar PDF...");
   
+  // Configurar marked para que respete los saltos de línea (como en el frontend)
+  marked.setOptions({
+    breaks: true,
+    gfm: true
+  });
+
   // 1. Convertir Markdown a HTML
-  const rawHtml = window.marked.parse(markdownText || 'No hay contenido para mostrar');
+  const rawHtml = marked.parse(markdownText || 'No hay contenido para mostrar');
 
   // 2. Construir el documento HTML completo para impresión
   const htmlContent = `

@@ -3,6 +3,9 @@ import { useTexts } from '../hooks/useTexts'
 import { useCombinations } from '../hooks/useCombinations'
 import Dialog from '../components/Dialog'
 import CardSelectorModal from '../components/CardSelectorModal'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { FULL_DECK } from '../constants/appData'
 import { generarPDFDesdeMarkdown } from '../utils/pdf_generator.js'
 import { generateDeterministicReport } from '../utils/brain_engine.js'
@@ -307,12 +310,17 @@ export default function Fase1Screen() {
               Con respecto a tu consulta sobre: <strong style={{color: 'var(--blue-accent)'}}>"{result.question}"</strong>
             </p>
             
-            <div className="glass-card-light custom-scroll-container" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', whiteSpace: 'pre-wrap', color: '#FFFFFF', fontSize: '13px', lineHeight: '1.5', fontFamily: 'monospace'}}>
+            <div className="glass-card-light custom-scroll-container report-content-markdown" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6'}}>
               {streamError ? (
                 <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
               ) : (
                 <>
-                  {streamedReport || loadingMessages[loadingMsgIndex]}
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]} 
+                    rehypePlugins={[rehypeRaw]}
+                  >
+                    {streamedReport || loadingMessages[loadingMsgIndex]}
+                  </ReactMarkdown>
                   {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
                 </>
               )}

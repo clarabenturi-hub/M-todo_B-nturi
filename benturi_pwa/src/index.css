@@ -1308,3 +1308,45 @@ select {
   0% { transform: translateX(-100%) rotate(30deg); }
   20%, 100% { transform: translateX(100%) rotate(30deg); }
 }
+
+/* ===== MARKDOWN REPORT STYLES ===== */
+.report-content-markdown {
+  font-family: 'Inter', sans-serif;
+  color: #e2e8f0;
+}
+.report-content-markdown u {
+  text-decoration: underline;
+  text-decoration-color: var(--blue-accent);
+  text-underline-offset: 4px;
+}
+.report-content-markdown p {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+.report-content-markdown h1,
+.report-content-markdown h2,
+.report-content-markdown h3 {
+  color: var(--blue-mid);
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  text-transform: none;
+  text-align: left;
+  letter-spacing: normal;
+}
+.report-content-markdown h3 {
+  font-size: 16px;
+  color: var(--blue-accent);
+}
+.report-content-markdown strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+.report-content-markdown ul,
+.report-content-markdown ol {
+  margin-left: 20px;
+  margin-bottom: 16px;
+}
+.report-content-markdown li {
+  margin-bottom: 6px;
+}
