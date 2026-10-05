@@ -334,7 +334,9 @@ app.post('/api/generate-report', async (req, res) => {
         }
         
         const genAI = new GoogleGenerativeAI(apiKey);
-        const promptFile = path.join(__dirname, '../Informe Usuario .txt');
+        const is24 = result.cards && result.cards.length === 24;
+        const promptFilename = is24 ? '../Informe_Usuario_24.txt' : '../Informe Usuario .txt';
+        const promptFile = path.join(__dirname, promptFilename);
         const systemPrompt = fs.readFileSync(promptFile, 'utf8');
         
         // Leer base de conocimientos de combinaciones y significados deterministas
@@ -398,15 +400,76 @@ app.post('/api/generate-report', async (req, res) => {
         let vectoresArray = [];
         let combosReales = [];
 
-        if (result.q1) {
-            // Matriz 24
-            vectoresArray = [
-                { posicion: "Cuadrante 1: Origen y Causa Subyacente", cartas: result.q1 },
-                { posicion: "Cuadrante 2: Fricción y Resistencia", cartas: result.q2 },
-                { posicion: "Cuadrante 3: Puntos de Inflexión y Acción", cartas: result.q3 },
-                { posicion: "Cuadrante 4: Proyección y Desenlace", cartas: result.q4 }
+        if (result.cards && result.cards.length === 24) {
+            // MATRIZ 24 VECTORES (Cruce completo de matriz 4x6)
+            const m = result.cards.map(card => card ? card.spanishName : null);
+            
+            // Nombres de posiciones según la matriz del método Bénturi
+            const posNames = [
+                "C1", "C3", "C5", "C7", "C9", "C11",
+                "C13", "C15", "C17", "C19", "C21", "C23",
+                "C25", "C27", "C29", "C31", "C33", "C35",
+                "C37", "C39", "C41", "C43", "C45", "C47"
             ];
-            contextText = `TIPO DE MATRIZ: Matriz Express de 24 Vectores\nPREGUNTA DEL USUARIO: ${question}\n\nDATOS EXTRAÍDOS (Resumen por Cuadrantes):\n${JSON.stringify(vectoresArray, null, 2)}`;
+            
+            const getPos = (idx) => ({ c: m[idx], p: posNames[idx] });
+
+            vectoresArray = m.map((carta, idx) => ({
+                posicion: `Posición ${posNames[idx]}`,
+                nombre_carta: carta,
+                significado_determinista: getDeterministicInfo(carta)
+            }));
+
+            const dobles = [];
+            const triples = [];
+            const cuadruples = [];
+
+            const addD = (i1, i2) => dobles.push([getPos(i1), getPos(i2)]);
+            const addT = (i1, i2, i3) => triples.push([getPos(i1), getPos(i2), getPos(i3)]);
+            const addQ = (i1, i2, i3, i4) => cuadruples.push([getPos(i1), getPos(i2), getPos(i3), getPos(i4)]);
+
+            // HORIZONTALES (Dobles, Triples, Cuadruples)
+            for (let r = 0; r < 4; r++) {
+                const rowStart = r * 6;
+                // Hacia adelante
+                for (let i = 0; i < 5; i++) addD(rowStart+i, rowStart+i+1);
+                for (let i = 0; i < 4; i++) addT(rowStart+i, rowStart+i+1, rowStart+i+2);
+                for (let i = 0; i < 3; i++) addQ(rowStart+i, rowStart+i+1, rowStart+i+2, rowStart+i+3);
+                // Hacia atrás (Dobles)
+                for (let i = 5; i > 0; i--) addD(rowStart+i, rowStart+i-1);
+            }
+
+            // VERTICALES (Dobles)
+            // Hacia abajo (F1->F2, F2->F3, F3->F4)
+            for (let c = 0; c < 6; c++) {
+                addD(c, c+6);     
+                addD(c+6, c+12);  
+                addD(c+12, c+18); 
+            }
+            // Hacia arriba (F2->F1, F3->F2, F4->F3)
+            for (let c = 0; c < 6; c++) {
+                addD(c+6, c);     
+                addD(c+12, c+6);  
+                addD(c+18, c+12); 
+            }
+
+            // Procesar combinaciones
+            [cuadruples, triples, dobles].forEach(group => {
+                group.forEach(seq => {
+                    const cards = seq.map(s => s.c);
+                    const pos = seq.map(s => s.p);
+                    const matchStr = checkCombination(cards, pos);
+                    if (matchStr) combosReales.push(matchStr);
+                });
+            });
+
+            let extractedDataText = "DATOS EXTRAÍDOS DEL BACKEND PARA LA MATRIZ DE 24 VECTORES:\n";
+            extractedDataText += `PREGUNTA DEL CONSULTANTE: ${question}\n\n`;
+            extractedDataText += `VALORES INDIVIDUALES DETERMINISTAS:\n${JSON.stringify(vectoresArray, null, 2)}\n\n`;
+            extractedDataText += `ASOCIACIONES COMPROBADAS EN LA MATRIZ 4x6 (Dobles, Triples y Cuádruples):\n`;
+            extractedDataText += combosReales.length > 0 ? combosReales.join("\n") + "\n\n" : "(Ninguna asociación válida encontrada en la red de la matriz)\n\n";
+
+            contextText = extractedDataText + `Instrucción: Genera el informe final de 24 cartas usando tu prompt de estructura específico.`;
         } else {
             // Matriz 6 - Mapeo de Posiciones Algoritmo Bénturi (C1, C3, C5, C7, C9, C11)
             vectoresArray = [
