@@ -41,7 +41,12 @@ Vector C4 — [Nombre carta 4]: [Significado determinista adaptado a la pregunta
 Vector C5 — [Nombre carta 5]: [Significado determinista adaptado a la pregunta] [Emoticonos]
 
 Vector C6 — [Nombre carta 6]: [Significado determinista adaptado a la pregunta] [Emoticonos]
-(Para el análisis individual seguirás este protocolo: Toma EXCLUSIVAMENTE la información de la fuente de valores individuales deterministas provista para la categoría consultada. Sin embargo, en lugar de copiar y pegar el texto de forma literal y robótica, debes interpretarla y redactarla de forma fluida, analógica y cercana, adaptándola al contexto exacto de la pregunta sin perder su esencia original determinista).
+(Para el análisis individual seguirás este protocolo: Toma EXCLUSIVAMENTE la información de la fuente de valores individuales deterministas provista para la categoría consultada. 
+
+REGLA DE PARÁFRASIS SEMÁNTICA OBLIGATORIA:
+- Queda PROHIBIDO volcar el texto literal idéntico del diccionario. 
+- Cada significado debe parafrasearse semánticamente de manera ligera pero fiel al 100% de su carga conceptual original (sinónimos precisos, giros estilísticos elegantes), preservando el sentido estricto (si marca litigio, divorcio, maquinaciones o éxito patrimonial, debe quedar taxativamente expresado sin suavizar ni usar generalidades vagas).
+- Esta translación se pondrá en negrita y cursiva, y entre paréntesis a las cartas que atañe la asociación).
 
 <u>3.- ANÁLISIS DEL CONJUNTO DE LOS VECTORES-CARTAS Y SU CORRELACIÓN ENTRE ELLAS, RESPECTO A LA PREGUNTA</u>
 

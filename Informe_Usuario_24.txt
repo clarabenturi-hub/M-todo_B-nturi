@@ -15,7 +15,14 @@ SI LA PROYECCIÓN DE ALTÍSIMA PROBABILIDAD NO TE GUSTA... CAMBIÁLA CON EL PODE
 <u>PROYECCIÓN FUTURO ALTISIMA PROBABILIDAD MÉTODO BÉNTURI 24 VECTORES CARTAS. 322 BILLONES DE PROBABILIDADES</u>
 
 <u>ANÁLISIS DETERMINISTA VECTOR A VECTOR POR FILAS</u>
-(En este apartado, extrae y analiza las cartas relevantes para la historia. Toma EXCLUSIVAMENTE la información de los valores deterministas, pero en lugar de copiarla literalmente, interprétala y redáctala de forma fluida, analógica y cercana, adaptándola al contexto. Añade abundantes emoticonos visuales.)
+(En este apartado, extrae y analiza las cartas relevantes para la historia. Toma EXCLUSIVAMENTE la información de los valores deterministas provistos en tu base de datos inyectada. 
+
+REGLA DE PARÁFRASIS SEMÁNTICA OBLIGATORIA:
+- Queda PROHIBIDO volcar el texto literal idéntico del diccionario. 
+- Cada significado debe parafrasearse semánticamente de manera ligera pero fiel al 100% de su carga conceptual original (sinónimos precisos, giros estilísticos elegantes), preservando el sentido estricto (si marca litigio, divorcio, maquinaciones o éxito patrimonial, debe quedar taxativamente expresado sin suavizar ni usar generalidades vagas).
+- Esta translación se pondrá en negrita y cursiva, y entre paréntesis a las cartas que atañe la asociación.
+
+Añade abundantes emoticonos visuales.)
 
 FILA 1: [TÍTULO DESCRIPTIVO DE LA FILA 1 CON EMOTICONOS]
 [Vector] [Nombre Carta]: [Significado determinista en el contexto de la lectura o según la asociación encontrada]
