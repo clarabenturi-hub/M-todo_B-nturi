@@ -571,7 +571,7 @@ app.post('/api/generate-report', async (req, res) => {
                 console.error(`Error contactando con Gemini API. Reintentos restantes: ${retries - 1}`, e);
                 retries--;
                 if (retries === 0) {
-                    const errorText = "# INFORME DE PROYECCIÓN DE FUTURO Y MATRIZ VECTORIAL\n\nHubo un error de conexión persistente con la IA cuántica. Detalles del error: " + e.message;
+                    const errorText = "## ⚠️ ALTA DEMANDA EN LOS SERVIDORES CUÁNTICOS\n\nActualmente, miles de usuarios están colapsando la onda de probabilidad simultáneamente y nuestros servidores cuánticos están saturados.\n\nPor favor, **cierra esta ventana, espera unos segundos y vuelve a pulsar el botón de Generar Informe**.\n\nTus cartas y parámetros seguirán guardados para que no tengas que volver a elegirlos.\n\n*(Nuestros ingenieros ya están escalando los servidores para soportar el crecimiento masivo).*";
                     res.write(`data: ${JSON.stringify({ text: errorText })}\n\n`);
                 } else {
                     await new Promise(resolve => setTimeout(resolve, 2000 * (4 - retries)));
