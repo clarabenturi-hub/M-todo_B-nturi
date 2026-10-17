@@ -665,18 +665,6 @@ app.post('/api/generate-report', async (req, res) => {
             }
         }
         
-        // Append static text if the generation succeeded
-        if (success) {
-            try {
-                const staticPathFile = path.join(__dirname, 'texto_estatico_informe.txt');
-                if (fs.existsSync(staticPathFile)) {
-                    const staticContent = fs.readFileSync(staticPathFile, 'utf8');
-                    res.write(`data: ${JSON.stringify({ text: '\n\n' + staticContent })}\n\n`);
-                }
-            } catch (err) {
-                console.error("Error leyendo texto_estatico_informe.txt", err);
-            }
-        }
 
         res.write('data: [DONE]\n\n');
         res.end();
