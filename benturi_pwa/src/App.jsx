@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParticlesBackground from './components/ParticlesBackground'
 import InstallPrompt from './components/InstallPrompt'
-import { LayoutDashboard, Layers, Network, Activity, Zap } from 'lucide-react'
+import { LayoutDashboard, Layers, Network, Zap } from 'lucide-react'
 import { useTexts } from './hooks/useTexts'
 import { playBeep } from './utils/audio'
 
@@ -10,7 +10,6 @@ import AuthModal from './components/AuthModal'
 import HomeScreen from './pages/HomeScreen'
 import Fase1Screen from './pages/Fase1Screen'
 import Fase1_24Screen from './pages/Fase1_24Screen'
-import Fase2Screen from './pages/Fase2Screen'
 import Fase3Screen from './pages/Fase3Screen'
 import AdminScreen from './pages/AdminScreen'
 
@@ -18,7 +17,6 @@ const NAV_ICONS = [
   <LayoutDashboard size={22} />,
   <Layers size={22} />,
   <Network size={22} />,
-  <Activity size={22} />,
   <Zap size={22} />
 ]
 
@@ -96,15 +94,13 @@ export default function App() {
     t('navegacion','tab_1','INICIO'),
     t('navegacion','tab_2','6 CARTAS'),
     t('navegacion','tab_3','24 CARTAS'),
-    t('navegacion','tab_4','AMA'),
     t('navegacion','tab_5','DECIDE'),
   ]
 
   const screens = [
-    <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(5)} />,
+    <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(4)} />,
     <Fase1Screen key="fase1" />,
     <Fase1_24Screen key="fase1_24" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
-    <Fase2Screen key="fase2" />,
     <Fase3Screen key="fase3" />,
     <AdminScreen key="admin" token={token} />
   ]
