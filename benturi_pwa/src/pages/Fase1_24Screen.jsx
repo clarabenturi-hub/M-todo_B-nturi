@@ -74,6 +74,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
 
   // Modal para ver el vídeo explicativo de Clara Bénturi en cualquier momento
   const [showVideoModal, setShowVideoModal] = useState(false)
+  const [videoError, setVideoError] = useState(false)
 
   const [totalScore, setTotalScore] = useState(() => {
     try {
@@ -374,9 +375,11 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
       <div className="page stack">
         
         {/* ENCABEZADO PRINCIPAL DE LA PROYECCIÓN 24 VECTORES */}
-        <div className="glass-card-light" style={{textAlign:'center'}}>
-          <h1 style={{fontSize: '22px', lineHeight: '1.3'}}>Proyección de Futuro Alta Probabilidad (24 Vectores)</h1>
-          <div className="subtitle mt-8" style={{fontSize: '13px', lineHeight: '1.4', opacity: 0.9, textTransform: 'none'}}>
+        <div className="glass-card-light" style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: 'clamp(15px, 4vw, 22px)', lineHeight: '1.3', letterSpacing: '0.5px' }}>
+            Proyección de Futuro Alta Probabilidad (24 Vectores)
+          </h1>
+          <div className="subtitle mt-8" style={{ fontSize: 'clamp(11px, 2.9vw, 13px)', lineHeight: '1.45', opacity: 0.9, textTransform: 'none' }}>
             El Algoritmo decodifica 32,2 billones de opciones cruzando tu estado vibracional con la red probabilística.
           </div>
         </div>
@@ -391,12 +394,12 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
           >
             <span className="stepper-badge">{done ? '✓' : '1'}</span>
             <div>
-              <div style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.7 }}>Paso 1</div>
-              <div style={{ whiteSpace: 'nowrap' }}>Sintonización (Pirámide)</div>
+              <div style={{ fontSize: '9px', textTransform: 'uppercase', opacity: 0.75 }}>Paso 1</div>
+              <div className="stepper-title">Pirámide (Amor)</div>
             </div>
           </button>
 
-          <div style={{ width: '20px', height: '1px', background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+          <div style={{ width: '12px', height: '1px', background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
 
           <button 
             type="button"
@@ -409,8 +412,8 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
           >
             <span className="stepper-badge">2</span>
             <div>
-              <div style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.7 }}>Paso 2</div>
-              <div style={{ whiteSpace: 'nowrap' }}>Matriz de 24 Cartas</div>
+              <div style={{ fontSize: '9px', textTransform: 'uppercase', opacity: 0.75 }}>Paso 2</div>
+              <div className="stepper-title">Matriz (24 Cartas)</div>
             </div>
           </button>
         </nav>
@@ -425,28 +428,56 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
                 /* PASO 1A: INTRODUCCIÓN Y VÍDEO DE CLARA BÉNTURI */
                 <>
                   <div className="glass-card-light" style={{ textAlign: 'center' }}>
-                    <h2 style={{ fontSize: '20px', color: '#ffffff', marginBottom: '8px' }}>
+                    <h2 style={{ fontSize: 'clamp(14px, 3.8vw, 20px)', color: '#ffffff', marginBottom: '8px', letterSpacing: '0.5px', lineHeight: '1.3' }}>
                       Sintonización Vibracional: La Pirámide del Amor
                     </h2>
-                    <div className="subtitle" style={{ fontSize: '14px', opacity: 0.9, textTransform: 'none', maxWidth: '620px', margin: '0 auto', lineHeight: '1.5' }}>
+                    <div className="subtitle" style={{ fontSize: 'clamp(11px, 2.9vw, 13px)', opacity: 0.9, textTransform: 'none', maxWidth: '620px', margin: '0 auto', lineHeight: '1.45' }}>
                       Antes de abrir la matriz probabilística de 24 cartas, el Algoritmo necesita medir tu nivel vibracional para ubicar qué fila corresponde a tu Pasado, Presente y Futuro.
                     </div>
 
-                    <div className="mt-16" style={{ maxWidth: '560px', margin: '16px auto 0' }}>
-                      <video 
-                        controls 
-                        preload="metadata" 
-                        playsInline 
-                        style={{
-                          width: '100%', 
-                          borderRadius: '12px', 
-                          border: '1.5px solid rgba(0, 229, 255, 0.4)', 
-                          background: 'black',
-                          boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
-                        }}
-                      >
-                        <source src="/assets/videos/fase2.mp4" type="video/mp4" />
-                      </video>
+                    <div className="mt-16" style={{ width: '100%', maxWidth: '560px', margin: '16px auto 0' }}>
+                      {!videoError ? (
+                        <video 
+                          controls 
+                          preload="metadata" 
+                          playsInline 
+                          onError={() => setVideoError(true)}
+                          style={{
+                            width: '100%', 
+                            borderRadius: '12px', 
+                            border: '1.5px solid rgba(0, 229, 255, 0.4)', 
+                            background: 'black',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                            display: 'block'
+                          }}
+                        >
+                          <source src="/assets/videos/fase2.mp4" type="video/mp4" />
+                        </video>
+                      ) : (
+                        <div 
+                          style={{
+                            width: '100%',
+                            padding: '24px 16px',
+                            borderRadius: '12px',
+                            border: '1.5px solid rgba(0, 229, 255, 0.35)',
+                            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(11, 25, 44, 0.95))',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                            textAlign: 'center'
+                          }}
+                        >
+                          <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔺 ✨ 🔺</div>
+                          <div style={{ fontSize: '15px', fontWeight: '800', color: '#00e5ff', letterSpacing: '0.5px' }}>
+                            PROTOCOLO VIBRACIONAL DE LA PIRÁMIDE DEL AMOR
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '6px', maxWidth: '400px', lineHeight: '1.45' }}>
+                            Conexión energética directa con Clara Bénturi para calibrar los 3 poderes del Método.
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -800,15 +831,26 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
         {showVideoModal && (
           <Dialog title="VÍDEO EXPLICATIVO: LA VIBRACIÓN DEL AMOR" onClose={() => setShowVideoModal(false)}>
             <div style={{ textAlign: 'center' }}>
-              <video 
-                controls 
-                autoPlay
-                playsInline 
-                style={{ width: '100%', borderRadius: '12px', background: 'black', maxHeight: '55vh' }}
-              >
-                <source src="/assets/videos/fase2.mp4" type="video/mp4" />
-              </video>
-              <p style={{ fontSize: '13px', marginTop: '12px', opacity: 0.9, lineHeight: '1.4' }}>
+              {!videoError ? (
+                <video 
+                  controls 
+                  autoPlay
+                  playsInline 
+                  onError={() => setVideoError(true)}
+                  style={{ width: '100%', borderRadius: '12px', background: 'black', maxHeight: '55vh' }}
+                >
+                  <source src="/assets/videos/fase2.mp4" type="video/mp4" />
+                </video>
+              ) : (
+                <div style={{ padding: '24px 16px', background: 'rgba(0,0,0,0.4)', borderRadius: '12px', border: '1px solid rgba(0,229,255,0.3)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>✨ 🔺 ✨</div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#00e5ff' }}>CALIBRACIÓN VIBRACIONAL DIRECTA</div>
+                  <p style={{ fontSize: '12px', marginTop: '8px', color: '#cbd5e1', lineHeight: '1.5' }}>
+                    Responde al cuestionario de 55 preguntas para identificar tu nivel vibracional en la Pirámide del Amor.
+                  </p>
+                </div>
+              )}
+              <p style={{ fontSize: '12px', marginTop: '12px', opacity: 0.9, lineHeight: '1.4' }}>
                 Clara Bénturi te explica cómo funciona la Pirámide del Amor y por qué calibra el pasado y futuro de tu tirada de 24 cartas.
               </p>
             </div>
