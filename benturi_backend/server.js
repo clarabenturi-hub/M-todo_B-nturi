@@ -590,7 +590,7 @@ app.post('/api/generate-report', async (req, res) => {
             extractedDataText += `0.3 “PREGUNTAS RESPUESTAS PIRÁMIDE DEL AMOR”:\n`;
             extractedDataText += amorText + "\n\n";
 
-            contextText = extractedDataText + `Instrucción: Genera el informe final de 24 cartas usando tu prompt de estructura específico (INFORME USUARIO 24) respetando minuciosamente todas las directrices y normas. Recuerda que la tirada es panorámica general (no requiere pregunta individual).`;
+            contextText = extractedDataText + `Instrucción: Genera el informe final de 24 cartas usando tu prompt de estructura específico (INFORME USUARIO 24) respetando minuciosamente todas las directrices y normas. Recuerda que la tirada es panorámica general (no requiere pregunta individual) e integra en la SECCIÓN PRELIMINAR el Diagnóstico Vibracional y la Pirámide del Amor basándote en los datos del punto 0.3.`;
         } else {
             // Matriz 6 - Mapeo de Posiciones Algoritmo Bénturi (C1, C3, C5, C7, C9, C11)
             vectoresArray = [
