@@ -12,7 +12,6 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
   const getMeaning = useCombinations()
   const [loading, setLoading] = useState(false)
 
-  const [question, setQuestion] = useState('')
   const [timeLock, setTimeLock] = useState('En las próximas 78 horas')
   const [selectedCards, setSelectedCards] = useState(Array(24).fill(null))
   const [cardModalIndex, setCardModalIndex] = useState(null)
@@ -27,6 +26,36 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamError, setStreamError] = useState(false)
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
+
+  // Estado de las respuestas del cuestionario del amor (Fase 2)
+  const [amorInfo, setAmorInfo] = useState(() => {
+    try {
+      const savedAnswers = localStorage.getItem('benturi_fase2_answers')
+      const savedResult = localStorage.getItem('benturi_fase2_result')
+      if (savedAnswers || savedResult) {
+        return {
+          answers: savedAnswers ? JSON.parse(savedAnswers) : null,
+          result: savedResult ? JSON.parse(savedResult) : null
+        }
+      }
+    } catch (e) {
+      console.warn("Error leyendo datos del amor:", e)
+    }
+    return null
+  })
+
+  useEffect(() => {
+    try {
+      const savedAnswers = localStorage.getItem('benturi_fase2_answers')
+      const savedResult = localStorage.getItem('benturi_fase2_result')
+      if (savedAnswers || savedResult) {
+        setAmorInfo({
+          answers: savedAnswers ? JSON.parse(savedAnswers) : null,
+          result: savedResult ? JSON.parse(savedResult) : null
+        })
+      }
+    } catch (e) {}
+  }, [])
 
   const streamTimer = useRef(null)
 
@@ -46,10 +75,31 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     setStreamedReport('');
     setStreamError(false);
     try {
+      // Extraer datos de la Pirámide del Amor desde estado o localStorage si existen
+      let amorData = amorInfo;
+      if (!amorData) {
+        try {
+          const savedAnswers = localStorage.getItem('benturi_fase2_answers');
+          const savedResult = localStorage.getItem('benturi_fase2_result');
+          if (savedAnswers || savedResult) {
+            amorData = {
+              answers: savedAnswers ? JSON.parse(savedAnswers) : null,
+              result: savedResult ? JSON.parse(savedResult) : null
+            };
+          }
+        } catch (e) {
+          console.warn("No se pudieron leer las respuestas de Fase 2:", e);
+        }
+      }
+
       const resp = await fetch('/api/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, result: resData })
+        body: JSON.stringify({ 
+          question: resData.question || 'Consulta General (Proyección Panorámica 24 Vectores)', 
+          result: resData,
+          amorData 
+        })
       });
       if (!resp.ok) throw new Error('Error en la API');
       
@@ -100,11 +150,6 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
   };
 
   const handleProject = () => {
-    if (!question.trim()) {
-      alert(t('fase1','alerta_variable_vacia','El Algoritmo requiere una Variable de Consulta válida.'))
-      return
-    }
-
     const filled = [...selectedCards]
     const remaining = FULL_DECK.filter(c => !filled.some(s => s?.id === c.id))
     const shuffled = remaining.sort(() => Math.random() - 0.5)
@@ -136,7 +181,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
         const c19 = filled[18].spanishName, c20 = filled[19].spanishName
 
         const newResult = {
-          question,
+          question: 'Consulta General (Proyección Panorámica 24 Vectores)',
           timeLock,
           cards: filled,
           c1, c2, c7, c8, c13, c14, c19, c20,
@@ -235,18 +280,39 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
            </div>
          </div>
 
-         <div className="glass-card">
-           <h2>{t('fase1','titulo_parametros','ESTABLECER PARÁMETROS')}</h2>
-           <div className="params-row mt-24">
-             <div>
-               <label className="field-label" style={{ fontSize: '1rem', fontWeight: '400', lineHeight: '1.6', display: 'block', marginBottom: '12px' }}>{t('fase1','label_variable','Variable de Consulta:')}</label>
-               <input type="text" value={question} onChange={e => setQuestion(e.target.value)} placeholder={t('fase1','placeholder_variable','Ej: ¿Conseguiré el nuevo trabajo...')} />
-             </div>
-             <div>
+                  <div className="glass-card">
+           <h2>{t('fase1','titulo_parametros','PARÁMETROS DE LA MATRIZ (24 VECTORES)')}</h2>
+           <p className="mt-8" style={{ fontSize: '13px', opacity: 0.85, lineHeight: '1.5' }}>
+             Esta tirada es <strong>panorámica y genérica</strong>. No requiere formular una pregunta individual: el Algoritmo Bénturi decodifica la red completa de 24 vectores analizando Pasado, Presente y Futuro.
+           </p>
+
+           <div className="params-row mt-16" style={{ alignItems: 'stretch' }}>
+             <div style={{ flex: 1, minWidth: '220px' }}>
                <label className="field-label">{t('fase1','label_candado','Candado Temporal:')}</label>
                <select value={timeLock} onChange={e => setTimeLock(e.target.value)}>
                  {timeLockList.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                </select>
+             </div>
+
+             <div style={{ flex: 1.6, minWidth: '240px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '10px', padding: '12px', border: '1px solid rgba(127,179,213,0.25)' }}>
+               <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--blue-accent)', marginBottom: '4px' }}>
+                 Eje Temporal (Pirámide del Amor)
+               </div>
+               {amorInfo?.result || (amorInfo?.answers && Object.keys(amorInfo.answers).length > 0) ? (
+                 <div style={{ fontSize: '12px', lineHeight: '1.4', color: '#a3e635' }}>
+                   ✨ <strong>Cuestionario Sincronizado</strong>: {amorInfo.result ? `Escalón ${amorInfo.result.activeLevel} (${amorInfo.result.levelName})` : `${Object.keys(amorInfo.answers).length} respuestas activas`}.
+                   <div style={{ fontSize: '11px', color: '#e2e8f0', opacity: 0.85, marginTop: '2px' }}>
+                     El algoritmo prioriza tus respuestas para determinar el Pasado y ordenar el flujo temporal.
+                   </div>
+                 </div>
+               ) : (
+                 <div style={{ fontSize: '12px', lineHeight: '1.4', color: '#cbd5e1' }}>
+                   ℹ️ <strong>Criterio Estándar</strong>: Fila 1 (Pasado) → Filas 2 y 3 (Transición) → Fila 4 (Futuro).
+                   <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                     Si completas el cuestionario en la pestaña <strong>AMA</strong>, la matriz cruzará tus respuestas para afinar el eje temporal.
+                   </div>
+                 </div>
+               )}
              </div>
            </div>
          </div>
@@ -274,12 +340,12 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
            </div>
          </div>
 
-         <button className="btn-primary" onClick={handleProject} disabled={!question.trim()}>PROTOCOLO EXPRESS DE CALIBRACIÓN: MATRIZ DE 24 VECTORES-CARTAS</button>
+         <button className="btn-primary" onClick={handleProject} disabled={isProcessing}>{isProcessing ? "CALIBRANDO MATRIZ DE 24 VECTORES..." : "PROTOCOLO EXPRESS DE CALIBRACIÓN: MATRIZ DE 24 VECTORES-CARTAS"}</button>
 
          {result && (
             <Dialog 
               title="INFORME CUÁNTICO EN TIEMPO REAL" 
-              onClose={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setQuestion(''); setStreamedReport(''); }}
+              onClose={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setStreamedReport(''); }}
               actions={
                 <div className="stack" style={{width: '100%', gap: '8px'}}>
                   <button
@@ -293,16 +359,16 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
                   <button
                     className="btn-secondary"
                     style={{width: '100%', margin: 0, opacity: 0.8, fontSize: '11px'}}
-                    onClick={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setQuestion(''); setStreamedReport(''); }}
+                    onClick={() => { setResult(null); setSelectedCards(Array(24).fill(null)); setStreamedReport(''); }}
                   >
-                    CERRAR Y HACER OTRA PREGUNTA
+                    CERRAR Y REALIZAR OTRA PROYECCIÓN
                   </button>
                 </div>
               }
             >
               <div>
                  <p style={{fontStyle:'italic', marginBottom:'16px', opacity: 0.8}}>
-                   Consulta analizada: <strong style={{color: 'var(--blue-accent)'}}>"{result.question}"</strong>
+                   Modalidad: <strong style={{color: 'var(--blue-accent)'}}>Proyección Panorámica General (24 Vectores)</strong> | Candado: <strong>{result.timeLock}</strong>
                  </p>
                  
                  <div className="glass-card-light custom-scroll-container" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', whiteSpace: 'pre-wrap', color: '#FFFFFF', fontSize: '13px', lineHeight: '1.5', fontFamily: 'monospace'}}>

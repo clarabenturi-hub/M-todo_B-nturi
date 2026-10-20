@@ -326,7 +326,7 @@ const path = require('path');
 
 app.post('/api/generate-report', async (req, res) => {
     try {
-        const { question, result } = req.body;
+        const { question, result, amorData } = req.body;
         
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
@@ -549,13 +549,48 @@ app.post('/api/generate-report', async (req, res) => {
                 });
             });
 
-            let extractedDataText = "DATOS EXTRAÍDOS DEL BACKEND PARA LA MATRIZ DE 24 VECTORES:\n";
-            extractedDataText += `PREGUNTA DEL CONSULTANTE: ${question}\n\n`;
-            extractedDataText += `VALORES INDIVIDUALES DETERMINISTAS:\n${JSON.stringify(vectoresArray, null, 2)}\n\n`;
-            extractedDataText += `ASOCIACIONES COMPROBADAS EN LA MATRIZ 4x6 (Dobles, Triples y Cuádruples):\n`;
-            extractedDataText += combosReales.length > 0 ? combosReales.join("\n") + "\n\n" : "(Ninguna asociación válida encontrada en la red de la matriz)\n\n";
+            // 0.3 PREGUNTAS RESPUESTAS PIRÁMIDE DEL AMOR
+            const amorInfo = amorData || result.amorData || null;
+            let amorText = "";
+            if (amorInfo && (amorInfo.result || (amorInfo.answers && Object.keys(amorInfo.answers).length > 0))) {
+                const diag = amorInfo.result;
+                amorText += `DIAGNÓSTICO VIBRACIONAL DEL CONSULTANTE:\n`;
+                if (diag) {
+                    amorText += `- Escalón diagnosticado: Escalón ${diag.activeLevel} (${diag.levelName}) [Zona: ${diag.zone || 'N/A'}]\n`;
+                    amorText += `- Puntuación Total Obtenida: ${diag.totalScore}/275\n`;
+                    if (diag.date) amorText += `- Fecha de Evaluación: ${diag.date}\n`;
+                    amorText += `\n`;
+                }
+                if (amorInfo.answers && Object.keys(amorInfo.answers).length > 0) {
+                    amorText += `DETALLE DE RESPUESTAS A LAS PREGUNTAS DEL CUESTIONARIO:\n`;
+                    const ansList = Object.values(amorInfo.answers);
+                    ansList.forEach(a => {
+                        const areaStr = a.area || (a.text && a.text.includes(':') ? a.text.split(':')[0].trim() : 'General');
+                        amorText += `• [Escalón ${a.level} | ${areaStr}] "${a.text}" => Respuesta seleccionada: ${a.score}/5 (${a.scoreLabel || a.score})\n`;
+                    });
+                }
+                amorText += `\nCRITERIO DE CRUCE TEMPORAL OBLIGATORIO (PRIORIDAD SOBRE EL ORDEN POR DEFECTO):\n`;
+                amorText += `El consultante ha contestado a las preguntas de la Pirámide del Amor. Compara las asociaciones y cartas encontradas en la matriz 4x6 con estas respuestas y su estado vibracional.\n`;
+                amorText += `Si una asociación o carta refleja una vivencia, conflicto, ruptura o lección que el consultante ya superó o vivió en el pasado (según sus respuestas), sitúa esa fila de manera prioritaria como PASADO ("FUNDAMENTOS E INFLUENCIAS DE ORIGEN"), reorganizando el flujo temporal de las demás filas en consecuencia.\n`;
+                amorText += `Si no existen correspondencias concluyentes con las respuestas, mantén el criterio por defecto: Fila 1 = Pasado, Filas 2 y 3 = Transición/Presente, Fila 4 = Futuro.\n`;
+            } else {
+                amorText = `(No constan respuestas previas registradas del consultante en el cuestionario de la Pirámide del Amor).\n\n`;
+                amorText += `CRITERIO TEMPORAL APLICABLE POR DEFECTO:\n`;
+                amorText += `Al no haber respuestas previas del cuestionario para cotejar, rige estrictamente el orden temporal por defecto estipulado en las normas del método:\n`;
+                amorText += `- FILA 1 (C1, C3, C5, C7, C9, C11) = FUNDAMENTOS E INFLUENCIAS DE ORIGEN (Pasado).\n`;
+                amorText += `- FILAS 2 Y 3 (C13 a C35) = FUERZAS EN ACTIVO Y ESPACIO DE TRANSFORMACIÓN (Transición Pasado-Futuro / Presente).\n`;
+                amorText += `- FILA 4 (C37 a C47) = HORIZONTES DE ALTA PROBABILIDAD Y TENDENCIAS DE EVOLUCIÓN (Futuro).\n`;
+            }
 
-            contextText = extractedDataText + `Instrucción: Genera el informe final de 24 cartas usando tu prompt de estructura específico.`;
+            let extractedDataText = "DATOS EXTRAÍDOS DEL BACKEND PARA LA MATRIZ DE 24 VECTORES (FASE 0):\n\n";
+            extractedDataText += `0.1 “LISTADO DE ASOCIACIONES DE CARTAS ENCONTRADAS”:\n`;
+            extractedDataText += combosReales.length > 0 ? combosReales.join("\n") + "\n\n" : "(Ninguna asociación válida encontrada en la red de la matriz 4x6)\n\n";
+            extractedDataText += `0.2 “ACEPCIÓN DETERMINISTA VECTOR- CARTA”:\n`;
+            extractedDataText += JSON.stringify(vectoresArray, null, 2) + "\n\n";
+            extractedDataText += `0.3 “PREGUNTAS RESPUESTAS PIRÁMIDE DEL AMOR”:\n`;
+            extractedDataText += amorText + "\n\n";
+
+            contextText = extractedDataText + `Instrucción: Genera el informe final de 24 cartas usando tu prompt de estructura específico (INFORME USUARIO 24) respetando minuciosamente todas las directrices y normas. Recuerda que la tirada es panorámica general (no requiere pregunta individual).`;
         } else {
             // Matriz 6 - Mapeo de Posiciones Algoritmo Bénturi (C1, C3, C5, C7, C9, C11)
             vectoresArray = [

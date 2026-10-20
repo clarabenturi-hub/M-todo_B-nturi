@@ -2,14 +2,76 @@ import { useState } from 'react'
 import { useTexts } from '../hooks/useTexts'
 import { FASE2_QUESTIONS, LEVEL_NAMES, getLevelZone, getLevelClass, ACTION_PLANS } from '../constants/appData'
 
+const LIKERT_TEXTS = {
+  1: "Totalmente en desacuerdo",
+  2: "En desacuerdo",
+  3: "Neutral",
+  4: "De acuerdo",
+  5: "Totalmente de acuerdo"
+}
+
 export default function Fase2Screen() {
   const { t } = useTexts()
+  
+  // Cargar estado previo de localStorage si existe
+  const [answers, setAnswers] = useState(() => {
+    try {
+      const saved = localStorage.getItem('benturi_fase2_answers')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
+
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [totalScore, setTotalScore] = useState(0)
-  const [done, setDone] = useState(false)
-  const [activeLevel, setActiveLevel] = useState(null)
+  
+  const [totalScore, setTotalScore] = useState(() => {
+    try {
+      const savedRes = localStorage.getItem('benturi_fase2_result')
+      return savedRes ? (JSON.parse(savedRes).totalScore || 0) : 0
+    } catch {
+      return 0
+    }
+  })
+
+  const [done, setDone] = useState(() => {
+    try {
+      return !!localStorage.getItem('benturi_fase2_result')
+    } catch {
+      return false
+    }
+  })
+
+  const [activeLevel, setActiveLevel] = useState(() => {
+    try {
+      const savedRes = localStorage.getItem('benturi_fase2_result')
+      return savedRes ? (JSON.parse(savedRes).activeLevel || null) : null
+    } catch {
+      return null
+    }
+  })
 
   const answerQuestion = (score) => {
+    const q = FASE2_QUESTIONS[currentIdx]
+    const area = q.area || (q.text && q.text.includes(':') ? q.text.split(':')[0].trim() : 'General')
+    const updatedAnswers = {
+      ...answers,
+      [q.id]: {
+        id: q.id,
+        level: q.level,
+        area,
+        text: q.text,
+        score,
+        scoreLabel: LIKERT_TEXTS[score]
+      }
+    }
+    setAnswers(updatedAnswers)
+    try {
+      localStorage.setItem('benturi_fase2_answers', JSON.stringify(updatedAnswers))
+    } catch (e) {
+      console.error("Error guardando benturi_fase2_answers:", e)
+    }
+
     const newScore = totalScore + score
     if (currentIdx < FASE2_QUESTIONS.length - 1) {
       setTotalScore(newScore)
@@ -21,11 +83,30 @@ export default function Fase2Screen() {
       if (level > 11) level = 11
       setActiveLevel(level)
       setDone(true)
+
+      const resultObj = {
+        activeLevel: level,
+        levelName: LEVEL_NAMES[level],
+        zone: getLevelZone(level),
+        totalScore: newScore,
+        date: new Date().toLocaleDateString('es-ES')
+      }
+      try {
+        localStorage.setItem('benturi_fase2_result', JSON.stringify(resultObj))
+      } catch (e) {
+        console.error("Error guardando benturi_fase2_result:", e)
+      }
     }
   }
 
   const reset = () => {
-    setCurrentIdx(0); setTotalScore(0); setDone(false); setActiveLevel(null)
+    setCurrentIdx(0)
+    setTotalScore(0)
+    setDone(false)
+    setActiveLevel(null)
+    setAnswers({})
+    localStorage.removeItem('benturi_fase2_answers')
+    localStorage.removeItem('benturi_fase2_result')
   }
 
   const current = FASE2_QUESTIONS[currentIdx]
