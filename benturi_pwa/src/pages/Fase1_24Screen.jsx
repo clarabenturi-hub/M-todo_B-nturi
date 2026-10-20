@@ -556,23 +556,6 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
               </button>
             </div>
 
-            {/* PARÁMETROS: CANDADO TEMPORAL */}
-            <div className="glass-card">
-              <h2>{t('fase1','titulo_parametros','PARÁMETROS DE LA MATRIZ (24 VECTORES)')}</h2>
-              <p className="mt-8" style={{ fontSize: '13px', opacity: 0.85, lineHeight: '1.5' }}>
-                Esta tirada es <strong>panorámica y genérica</strong>. No requiere formular una pregunta individual: el Algoritmo Bénturi decodifica la red completa de 24 vectores analizando Pasado, Presente y Futuro.
-              </p>
-
-              <div className="params-row mt-16">
-                <div style={{ width: '100%' }}>
-                  <label className="field-label">{t('fase1','label_candado','Candado Temporal:')}</label>
-                  <select value={timeLock} onChange={e => setTimeLock(e.target.value)}>
-                    {timeLockList.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
             {/* CUADRÍCULA DE 24 CARTAS */}
             <div>
               <div className="shuffle-header">
