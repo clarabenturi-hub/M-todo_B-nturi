@@ -1,0 +1,22 @@
+{
+  "factores": {
+    "1": "FACTOR 1: NIVELES DE VÍCTIMA Y VULNERABILIDAD",
+    "2": "FACTOR 2: NIVELES DE CONTROL, EGO Y LOGRO MATERIAL",
+    "3": "FACTOR 3: NIVELES DE ACEPTACIÓN, INTEGRACIÓN Y PROPÓSITO"
+  },
+  "niveles": {
+    "1": "Víctima Absoluta (Culpa Externa y Resentimiento)",
+    "2": "Impotencia y Parálisis (Bloqueo y Miedo al Cambio)",
+    "3": "Reactividad y Conflicto (Defensa y Enfrentamiento)",
+    "4": "Resignación Pasiva (Conformismo y Desgana)",
+    "5": "Validación y Estatus (Ego Social)",
+    "6": "Control Rígido y Exigencia (Perfeccionismo)",
+    "7": "Ambición Estratégica e Pragmatismo (Competitividad)",
+    "8": "Crisis de Identidad y Cuestionamiento (El Despertar del Ego)",
+    "9": "Aceptación y Perdón Sincero (Paz con el Pasado)",
+    "10": "Responsabilidad Absoluta y Coherencia (Autoría)",
+    "11": "Servicio y Transmisión de Conocimiento (Generosidad)",
+    "12": "Trascendencia y Libertad Interior (Paz Absoluta)"
+  },
+  "total_preguntas": 48
+}

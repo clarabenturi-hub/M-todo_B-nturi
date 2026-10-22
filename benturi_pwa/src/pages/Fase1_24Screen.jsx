@@ -3,6 +3,7 @@ import { useTexts } from '../hooks/useTexts'
 import { useCombinations } from '../hooks/useCombinations'
 import Dialog from '../components/Dialog'
 import CardSelectorModal from '../components/CardSelectorModal'
+import PyramidQuestionnaire from '../components/PyramidQuestionnaire'
 import { 
   FULL_DECK, 
   FASE2_QUESTIONS, 
@@ -148,6 +149,22 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
         console.error("Error guardando benturi_fase2_result:", e)
       }
     }
+  }
+
+  const handleQuizComplete = (diagData) => {
+    setDone(true)
+    setActiveLevel(diagData.result.activeLevel)
+    setAnswers(diagData.answers)
+    setTotalScore(diagData.result.totalScore)
+  }
+
+  const handleQuizReset = () => {
+    setDone(false)
+    setActiveLevel(null)
+    setAnswers({})
+    setTotalScore(0)
+    setQuizStarted(false)
+    setActiveStep(1)
   }
 
   const resetQuestionnaire = () => {
@@ -420,254 +437,128 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
 
         {/* ========================================================= */}
         {/* PASO 1: SINTONIZACIÓN VIBRACIONAL (CUESTIONARIO Y PIRÁMIDE) */}
-        {/* ========================================================= */}
         {activeStep === 1 && (
-          <div className="stack" style={{ gap: '16px' }}>
-            {!done ? (
-              !quizStarted ? (
-                /* PASO 1A: INTRODUCCIÓN Y VÍDEO DE CLARA BÉNTURI */
-                <>
-                  <div className="glass-card-light" style={{ textAlign: 'center' }}>
-                    <h2 style={{ fontSize: 'clamp(14px, 3.8vw, 20px)', color: '#ffffff', marginBottom: '8px', letterSpacing: '0.5px', lineHeight: '1.3' }}>
-                      Sintonización Vibracional: La Pirámide del Amor
-                    </h2>
-                    <div className="subtitle" style={{ fontSize: 'clamp(11px, 2.9vw, 13px)', opacity: 0.9, textTransform: 'none', maxWidth: '620px', margin: '0 auto', lineHeight: '1.45' }}>
-                      Antes de abrir la matriz probabilística de 24 cartas, el Algoritmo necesita medir tu nivel vibracional para ubicar qué fila corresponde a tu Pasado, Presente y Futuro.
-                    </div>
-
-                    <div className="mt-16" style={{ width: '100%', maxWidth: '560px', margin: '16px auto 0' }}>
-                      {!videoError ? (
-                        <video 
-                          controls 
-                          preload="metadata" 
-                          playsInline 
-                          onError={() => setVideoError(true)}
-                          style={{
-                            width: '100%', 
-                            borderRadius: '12px', 
-                            border: '1.5px solid rgba(0, 229, 255, 0.4)', 
-                            background: 'black',
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                            display: 'block'
-                          }}
-                        >
-                          <source src="/assets/videos/fase2.mp4" type="video/mp4" />
-                        </video>
-                      ) : (
-                        <div 
-                          style={{
-                            width: '100%',
-                            padding: '24px 16px',
-                            borderRadius: '12px',
-                            border: '1.5px solid rgba(0, 229, 255, 0.35)',
-                            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(11, 25, 44, 0.95))',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                            textAlign: 'center'
-                          }}
-                        >
-                          <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔺 ✨ 🔺</div>
-                          <div style={{ fontSize: '15px', fontWeight: '800', color: '#00e5ff', letterSpacing: '0.5px' }}>
-                            PROTOCOLO VIBRACIONAL DE LA PIRÁMIDE DEL AMOR
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '6px', maxWidth: '400px', lineHeight: '1.45' }}>
-                            Conexión energética directa con Clara Bénturi para calibrar los 3 poderes del Método.
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="glass-card" style={{ textAlign: 'center' }}>
-                    <h3 style={{ fontSize: '16px', color: '#40e0d0', marginBottom: '8px', letterSpacing: '0.04em' }}>
-                      LA VIBRACIÓN MÁS ALTA DEL UNIVERSO
-                    </h3>
-                    <p style={{ fontSize: '14px', lineHeight: '1.6', opacity: 0.9, maxWidth: '600px', margin: '0 auto' }}>
-                      Estar en amor es fundamental a nivel cuántico porque funciona como la frecuencia más alta, capaz de disolver el miedo, atraer situaciones sincrónicas y alinear tus células con la vida. Este chequeo (55 preguntas rápidas) revelará tu escalón en la Pirámide del Amor.
-                    </p>
-
-                    <button 
-                      className="btn-primary" 
-                      id="btn-iniciar-chequeo-amor"
-                      style={{
-                        fontSize: '16px',
-                        padding: '16px 24px',
-                        fontWeight: '800',
-                        letterSpacing: '0.03em',
-                        borderRadius: '12px',
-                        boxShadow: '0 6px 20px rgba(0, 229, 255, 0.35)',
-                        width: '100%',
-                        maxWidth: '480px',
-                        margin: '22px auto 0',
-                        display: 'block'
-                      }}
-                      onClick={() => setQuizStarted(true)}
-                    >
-                      INICIAR CHEQUEO VIBRACIONAL (55 PREGUNTAS) →
-                    </button>
-                  </div>
-                </>
-              ) : (
-                /* PASO 1B: CUESTIONARIO ENFOCADO 1 A 1 */
-                <>
-                  <div className="glass-card" style={{ padding: '16px 20px' }}>
-                    <div className="flex-between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                      <span className={`zone-pill ${getZoneClass(currentQuestion.level)}`} style={{ margin: 0 }}>
-                        {getZoneTitle(currentQuestion.level)}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <button
-                          type="button"
-                          onClick={() => setShowVideoModal(true)}
-                          style={{
-                            background: 'rgba(0, 229, 255, 0.1)',
-                            border: '1px solid rgba(0, 229, 255, 0.3)',
-                            color: '#40e0d0',
-                            fontSize: '12px',
-                            fontWeight: '700',
-                            padding: '5px 12px',
-                            borderRadius: '8px',
-                            cursor: 'pointer'
-                          }}
-                          title="Ver vídeo explicativo de Clara Bénturi"
-                        >
-                          🎬 Ver Vídeo
-                        </button>
-                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#40e0d0' }}>
-                          {progressPercent}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="progress-track" style={{ margin: '12px 0 0 0' }}>
-                      <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="question-card">
-                    <div className="question-header">
-                      <div className="question-counter" style={{ fontSize: '13px', letterSpacing: '0.05em' }}>
-                        PREGUNTA {currentIdx + 1} DE {FASE2_QUESTIONS.length}
-                      </div>
-                      {currentIdx > 0 && (
-                        <button 
-                          className="question-back-btn" 
-                          id="btn-pregunta-anterior-24" 
-                          onClick={() => setCurrentIdx(i => i - 1)}
-                          title="Pregunta anterior"
-                          style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: '#40e0d0', background: 'rgba(255,255,255,0.06)', padding: '6px 12px', borderRadius: '8px' }}
-                        >
-                          ← Anterior
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="question-text" style={{ minHeight: '70px', display: 'flex', alignItems: 'center', fontSize: '18px', fontWeight: '500', lineHeight: '1.5', margin: '16px 0 24px' }}>
-                      {currentQuestion.text}
-                    </div>
-
-                    <div className="likert-scale">
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <button 
-                          key={n} 
-                          className="likert-btn" 
-                          id={`likert-24-btn-${n}`} 
-                          onClick={() => answerQuestion(n)} 
-                          aria-label={`${n} de 5 - ${LIKERT_TEXTS[n]}`}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="likert-labels">
-                      <div className="likert-label">1<br/>Totalmente<br/>desacuerdo</div>
-                      <div className="likert-label">2<br/>En<br/>desacuerdo</div>
-                      <div className="likert-label">3<br/>Neutral</div>
-                      <div className="likert-label">4<br/>De<br/>acuerdo</div>
-                      <div className="likert-label">5<br/>Totalmente<br/>de acuerdo</div>
-                    </div>
-                  </div>
-                </>
-              )
-            ) : (
-              /* PASO 1C: PIRÁMIDE VIBRACIONAL REVELADA */
+          <div className="stack" style={{ gap: "16px" }}>
+            {!quizStarted && !done ? (
+              /* PASO 1A: INTRODUCCIÓN Y VÍDEO DE CLARA BÉNTURI */
               <>
-                <div className="glass-card">
-                  <h2 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '20px' }}>
-                    DIAGNÓSTICO VIBRACIONAL ALCANZADO
+                <div className="glass-card-light" style={{ textAlign: "center" }}>
+                  <h2 style={{ fontSize: "clamp(14px, 3.8vw, 20px)", color: "#ffffff", marginBottom: "8px", letterSpacing: "0.5px", lineHeight: "1.3" }}>
+                    Sintonización Vibracional: La Pirámide del Amor
                   </h2>
-                  <p style={{ textAlign: 'center', fontSize: '13px', opacity: 0.85, marginBottom: '20px' }}>
-                    Tu frecuencia ha sido identificada. El Algoritmo utilizará este escalón para calibrar el eje temporal y el Segundo Poder de tu tirada de 24 cartas.
-                  </p>
+                  <div className="subtitle" style={{ fontSize: "clamp(11px, 2.9vw, 13px)", opacity: 0.9, textTransform: "none", maxWidth: "620px", margin: "0 auto", lineHeight: "1.45" }}>
+                    Antes de abrir la matriz probabilística de 24 cartas, el Algoritmo necesita medir tu nivel vibracional para ubicar qué fila corresponde a tu Pasado, Presente y Futuro.
+                  </div>
 
-                  <div className="pyramid-container">
-                    {Array.from({ length: 11 }, (_, i) => {
-                      const lv = 11 - i
-                      const isActive = lv === activeLevel
-                      const cls = getLevelClass(lv)
-                      const widthPct = 30 + (i * 6)
-                      return (
-                        <div
-                          key={lv}
-                          className={`pyramid-level ${cls}${isActive ? ' active' : ''}`}
-                          style={{ width: `${widthPct}%`, animation: isActive ? 'pulse 2s infinite alternate' : 'none' }}
-                        >
-                          <span>{LEVEL_NAMES[lv]}</span>
+                  <div className="mt-16" style={{ width: "100%", maxWidth: "560px", margin: "16px auto 0" }}>
+                    {!videoError ? (
+                      <video
+                        controls
+                        preload="metadata"
+                        playsInline
+                        onError={() => setVideoError(true)}
+                        style={{
+                          width: "100%",
+                          borderRadius: "12px",
+                          border: "1.5px solid rgba(0, 229, 255, 0.4)",
+                          background: "black",
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                          display: "block"
+                        }}
+                      >
+                        <source src="/assets/videos/fase2.mp4" type="video/mp4" />
+                      </video>
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          padding: "24px 16px",
+                          borderRadius: "12px",
+                          border: "1.5px solid rgba(0, 229, 255, 0.35)",
+                          background: "linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(11, 25, 44, 0.95))",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                          textAlign: "center"
+                        }}
+                      >
+                        <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔺 ✨ 🔺</div>
+                        <div style={{ fontSize: "15px", fontWeight: "800", color: "#00e5ff", letterSpacing: "0.5px" }}>
+                          PROTOCOLO VIBRACIONAL DE LA PIRÁMIDE DEL AMOR
                         </div>
-                      )
-                    })}
+                        <div style={{ fontSize: "12px", color: "#cbd5e1", marginTop: "6px", maxWidth: "400px", lineHeight: "1.45" }}>
+                          Conexión energética directa con Clara Bénturi para calibrar los 3 poderes del Método.
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="result-diag">
-                  <div className="result-diag-label">CALIBRACIÓN COMPLETADA</div>
-                  <div className="result-diag-level">ESCALÓN {activeLevel}: {LEVEL_NAMES[activeLevel]}</div>
-                  <div className="result-diag-score">Puntuación Total: {totalScore}/275 pts • Zona {getLevelZone(activeLevel)}</div>
-                  <p style={{ fontSize: '14px', lineHeight: '1.5' }}>
-                    Tu nivel energético está alineado con la matriz probabilística. Ya estás listo para colapsar los 24 vectores.
+                <div className="glass-card" style={{ textAlign: "center" }}>
+                  <h3 style={{ fontSize: "16px", color: "#40e0d0", marginBottom: "8px", letterSpacing: "0.04em" }}>
+                    CALIBRACIÓN VIBRACIONAL DEL MÉTODO BÉNTURI
+                  </h3>
+                  <p style={{ fontSize: "14px", lineHeight: "1.6", opacity: 0.9, maxWidth: "600px", margin: "0 auto 20px" }}>
+                    Estar en amor es fundamental a nivel cuántico porque funciona como la frecuencia más alta, capaz de disolver el miedo, atraer situaciones sincrónicas y alinear tus células con la vida. Elige tu modalidad de cuestionario para revelar tu escalón en la Pirámide.
                   </p>
 
-                  {ACTION_PLANS[activeLevel] && (
-                    <>
-                      <div className="divider" />
-                      <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#40e0d0', marginBottom: '8px' }}>
-                        {ACTION_PLANS[activeLevel].title}
-                      </h3>
-                      {ACTION_PLANS[activeLevel].actions.map((a, i) => (
-                        <div key={i} className="action-item" style={{ fontSize: '13px', lineHeight: '1.4' }}>{a}</div>
-                      ))}
-                    </>
-                  )}
+                  <button
+                    className="btn-primary"
+                    id="btn-iniciar-chequeo-amor"
+                    style={{
+                      fontSize: "15px",
+                      padding: "16px 24px",
+                      fontWeight: "800",
+                      letterSpacing: "0.03em",
+                      borderRadius: "12px",
+                      boxShadow: "0 6px 20px rgba(0, 229, 255, 0.35)",
+                      width: "100%",
+                      maxWidth: "480px",
+                      margin: "0 auto",
+                      display: "block"
+                    }}
+                    onClick={() => setQuizStarted(true)}
+                  >
+                    INICIAR EVALUACIÓN VIBRACIONAL →
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* PASO 1B: CUESTIONARIO INTERACTIVO (48 SITUACIONALES / 55 CLÁSICO) Y PIRÁMIDE */
+              <>
+                <PyramidQuestionnaire
+                  initialDone={done}
+                  onComplete={handleQuizComplete}
+                  onReset={handleQuizReset}
+                />
 
-                  {/* BOTÓN PROMINENTE PARA PASAR AL PASO 2 */}
-                  <button 
-                    className="btn-primary mt-16" 
+                {done && (
+                  <button
+                    className="btn-primary"
                     id="btn-ir-paso-2"
-                    style={{ fontSize: '15px', padding: '16px 22px', fontWeight: '800', letterSpacing: '0.04em' }}
+                    style={{
+                      fontSize: "15px",
+                      padding: "16px 24px",
+                      fontWeight: "800",
+                      letterSpacing: "0.04em",
+                      width: "100%",
+                      maxWidth: "560px",
+                      margin: "16px auto 0",
+                      display: "block",
+                      boxShadow: "0 6px 20px rgba(0, 229, 255, 0.4)"
+                    }}
                     onClick={() => setActiveStep(2)}
                   >
                     CONTINUAR A LA MATRIZ DE 24 VECTORES (PASO 2) →
                   </button>
-
-                  <button 
-                    className="btn-secondary" 
-                    id="btn-recalibrar-fase2" 
-                    style={{ opacity: 0.8, fontSize: '12px', marginTop: '10px' }}
-                    onClick={resetQuestionnaire}
-                  >
-                    🔄 REPETIR CHEQUEO / RECALIBRAR PREGUNTAS
-                  </button>
-                </div>
+                )}
               </>
             )}
           </div>
         )}
 
-        {/* ========================================================= */}
         {/* PASO 2: MATRIZ DE 24 VECTORES (SELECCIÓN Y TIRADA)       */}
         {/* ========================================================= */}
         {activeStep === 2 && (

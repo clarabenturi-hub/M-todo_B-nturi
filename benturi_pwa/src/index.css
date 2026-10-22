@@ -1371,6 +1371,22 @@ select {
 .report-content-markdown li {
   margin-bottom: 6px;
 }
+.report-content-markdown hr {
+  border: none;
+  border-top: 1px solid rgba(127, 179, 213, 0.4);
+  margin: 18px 0;
+  clear: both;
+}
+.report-content-markdown blockquote {
+  border: 1px solid rgba(127, 179, 213, 0.4);
+  background: rgba(10, 25, 47, 0.65);
+  border-left: 3px solid var(--blue-accent, #38bdf8);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 18px 0;
+  font-style: italic;
+  color: #f1f5f9;
+}
 
 /* Stepper para Tirada de 24 Cartas */
 .stepper-nav {

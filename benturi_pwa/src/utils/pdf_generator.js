@@ -53,6 +53,8 @@ export async function generarPDFDesdeMarkdown(markdownText, filename = null) {
         strong { font-weight: bold; }
         ul { list-style-type: disc; padding-left: 20px; margin-bottom: 15px; }
         li { margin-bottom: 5px; }
+        hr { border: 0; border-top: 1px solid #7fb3d5; margin: 16px 0; }
+        blockquote { border: 1px solid #7fb3d5; border-left: 4px solid #1a365d; background-color: #f8fafc; border-radius: 6px; padding: 10px 14px; margin: 15px 0; font-style: italic; }
         /* Forzar colores en navegadores webkit al imprimir */
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

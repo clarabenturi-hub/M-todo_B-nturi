@@ -554,26 +554,49 @@ app.post('/api/generate-report', async (req, res) => {
             let amorText = "";
             if (amorInfo && (amorInfo.result || (amorInfo.answers && Object.keys(amorInfo.answers).length > 0))) {
                 const diag = amorInfo.result;
+                const isSituacional = amorInfo.tipo === "situacional_48" || (diag && diag.factorId);
                 amorText += `DIAGNÓSTICO VIBRACIONAL DEL CONSULTANTE:\n`;
                 if (diag) {
-                    amorText += `- Escalón diagnosticado: Escalón ${diag.activeLevel} (${diag.levelName}) [Zona: ${diag.zone || 'N/A'}]\n`;
-                    amorText += `- Puntuación Total Obtenida: ${diag.totalScore}/275\n`;
+                    if (isSituacional) {
+                        amorText += `- Modalidad: Test Situacional de Proyección Bénturi (48 Preguntas en 12 Peldaños)\n`;
+                        amorText += `- Factor Predominante: ${diag.factorNombre || ("Factor " + diag.factorId)}\n`;
+                        amorText += `- Escalón Diagnosticado: Escalón ${diag.activeLevel} (${diag.levelName}) [Zona: ${diag.zone || "N/A"}]\n`;
+                        amorText += `- Puntuación Total: ${diag.totalScore} / ${diag.maxPossibleScore || 144}\n`;
+                    } else {
+                        amorText += `- Modalidad: Test Escala de Sintonización Clásica (55 Preguntas Likert)\n`;
+                        amorText += `- Escalón diagnosticado: Escalón ${diag.activeLevel} (${diag.levelName}) [Zona: ${diag.zone || "N/A"}]\n`;
+                        amorText += `- Puntuación Total Obtenida: ${diag.totalScore}/275\n`;
+                    }
                     if (diag.date) amorText += `- Fecha de Evaluación: ${diag.date}\n`;
                     amorText += `\n`;
                 }
                 if (amorInfo.answers && Object.keys(amorInfo.answers).length > 0) {
-                    amorText += `DETALLE DE RESPUESTAS A LAS PREGUNTAS DEL CUESTIONARIO:\n`;
                     const ansList = Object.values(amorInfo.answers);
-                    ansList.forEach(a => {
-                        const areaStr = a.area || (a.text && a.text.includes(':') ? a.text.split(':')[0].trim() : 'General');
-                        amorText += `• [Escalón ${a.level} | ${areaStr}] "${a.text}" => Respuesta seleccionada: ${a.score}/5 (${a.scoreLabel || a.score})\n`;
+                    const hitosD = ansList.filter(a => a.isFutureHito || a.key === "D" || a.score === 0);
+                    const vivencias = ansList.filter(a => !(a.isFutureHito || a.key === "D" || a.score === 0));
+                    if (hitosD.length > 0) {
+                        amorText += `⚠️ HITOS NO VIVIDOS / EVENTOS FUTUROS POTENCIALES DETECTADOS (OPCIÓN D MARCADAS POR EL USUARIO):\n`;
+                        amorText += `(CRÍTICO: El usuario declara que JAMÁS le han ocurrido estos eventos en su vida. Si en la matriz 4x6 aparecen cartas asociadas a estas temáticas, NO las interpretes como pasado ni lección superada, sino como un evento latente o potencial en su horizonte de futuro):\n`;
+                        hitosD.forEach(h => {
+                            amorText += `• [Escalón ${h.level} | ${h.area || "General"}] Situación: "${h.pregunta || h.text}" => Respuesta: "${h.textoOpcion || h.texto || "Jamás ha ocurrido"}"\n`;
+                        });
+                        amorText += `\n`;
+                    }
+                    amorText += `DETALLE DE RESPUESTAS A LAS PREGUNTAS DEL CUESTIONARIO (VIVENCIAS Y POSTURAS):\n`;
+                    vivencias.forEach(a => {
+                        const areaStr = a.area || (a.text && a.text.includes(":") ? a.text.split(":")[0].trim() : "General");
+                        if (a.pregunta && a.textoOpcion) {
+                            amorText += `• [Escalón ${a.level} | ${areaStr}] "${a.pregunta}" => Opción [${a.key || "A"}]: "${a.textoOpcion}" (Nivel ${a.score}/3)\n`;
+                        } else {
+                            amorText += `• [Escalón ${a.level} | ${areaStr}] "${a.text}" => Respuesta seleccionada: ${a.score}/5 (${a.scoreLabel || a.score})\n`;
+                        }
                     });
                 }
                 amorText += `\nCRITERIO DE CRUCE TEMPORAL OBLIGATORIO (PRIORIDAD SOBRE EL ORDEN POR DEFECTO):\n`;
                 amorText += `El consultante ha contestado a las preguntas de la Pirámide del Amor. Compara las asociaciones y cartas encontradas en la matriz 4x6 con estas respuestas y su estado vibracional.\n`;
                 amorText += `Si una asociación o carta refleja una vivencia, conflicto, ruptura o lección que el consultante ya superó o vivió en el pasado (según sus respuestas), sitúa esa fila de manera prioritaria como PASADO ("FUNDAMENTOS E INFLUENCIAS DE ORIGEN"), reorganizando el flujo temporal de las demás filas en consecuencia.\n`;
-                amorText += `Si no existen correspondencias concluyentes con las respuestas, mantén el criterio por defecto: Fila 1 = Pasado, Filas 2 y 3 = Transición/Presente, Fila 4 = Futuro.\n`;
-            } else {
+                amorText += `Si una asociación o carta refleja uno de los HITOS NO VIVIDOS (Opción D), trátala de forma categórica como proyección de FUTURO ("HORIZONTES DE ALTA PROBABILIDAD").\n`;
+                amorText += `Si no existen correspondencias concluyentes con las respuestas, mantén el criterio por defecto: Fila 1 = Pasado, Filas 2 y 3 = Transición/Presente, Fila 4 = Futuro.\n`;} else {
                 amorText = `(No constan respuestas previas registradas del consultante en el cuestionario de la Pirámide del Amor).\n\n`;
                 amorText += `CRITERIO TEMPORAL APLICABLE POR DEFECTO:\n`;
                 amorText += `Al no haber respuestas previas del cuestionario para cotejar, rige estrictamente el orden temporal por defecto estipulado en las normas del método:\n`;
