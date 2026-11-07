@@ -3,9 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   PREGUNTAS_SITUACIONALES_48, 
   FACTORES_PIRAMIDE, 
-  NIVELES_12, 
-  ACTION_PLANS_12, 
-  calculateSituationalPyramid 
+  NIVELES_12 
 } from '../constants/situationalQuestions'
 import { 
   FASE2_QUESTIONS, 
@@ -28,16 +26,22 @@ export default function PyramidQuestionnaire({
   initialDone = false, 
   onReset 
 }) {
-  // Modalidad de cuestionario: 'situacional_48' (nuevo) o 'clasico_55' (existente)
-  const [mode, setMode] = useState(() => {
+  // Etapa activa del cuestionario integrado: 1 = Situacional (48 preguntas), 2 = Sintonización Likert (55 preguntas)
+  const [stage, setStage] = useState(() => {
     try {
-      return localStorage.getItem('benturi_quiz_mode') || 'situacional_48'
+      const savedStage = localStorage.getItem('benturi_quiz_stage')
+      if (savedStage) return parseInt(savedStage, 10)
+      const savedSit = localStorage.getItem('benturi_sit48_answers')
+      if (savedSit && Object.keys(JSON.parse(savedSit)).length >= PREGUNTAS_SITUACIONALES_48.length) {
+        return 2
+      }
+      return 1
     } catch {
-      return 'situacional_48'
+      return 1
     }
   })
 
-  // Estado para el modo Situacional (48 preguntas)
+  // Estado para la Etapa 1: Situacional (48 preguntas ABCD)
   const [sitAnswers, setSitAnswers] = useState(() => {
     try {
       const saved = localStorage.getItem('benturi_sit48_answers')
@@ -59,20 +63,24 @@ export default function PyramidQuestionnaire({
     }
   })
 
-  // Estado para el modo Clásico (55 preguntas)
+  // Estado para la Etapa 2: Sintonización Clásica (55 preguntas Likert)
   const [clasAnswers, setClasAnswers] = useState(() => {
     try {
-      const saved = localStorage.getItem('benturi_fase2_answers')
-      return saved ? JSON.parse(saved) : {}
+      const saved = localStorage.getItem('benturi_clas55_answers') || localStorage.getItem('benturi_fase2_answers')
+      if (!saved) return {}
+      const parsed = JSON.parse(saved)
+      return parsed.clasico ? parsed.clasico : parsed
     } catch {
       return {}
     }
   })
   const [clasIdx, setClasIdx] = useState(() => {
     try {
-      const saved = localStorage.getItem('benturi_fase2_answers')
+      const saved = localStorage.getItem('benturi_clas55_answers') || localStorage.getItem('benturi_fase2_answers')
       if (saved) {
-        const count = Object.keys(JSON.parse(saved)).length
+        const parsed = JSON.parse(saved)
+        const ansObj = parsed.clasico ? parsed.clasico : parsed
+        const count = Object.keys(ansObj).length
         if (count > 0 && count < FASE2_QUESTIONS.length) return count
       }
       return 0
@@ -81,7 +89,7 @@ export default function PyramidQuestionnaire({
     }
   })
 
-  // Estado de finalización y diagnóstico
+  // Estado de finalización y diagnóstico consolidado
   const [isDone, setIsDone] = useState(initialDone)
   const [activeResult, setActiveResult] = useState(() => {
     try {
@@ -94,17 +102,93 @@ export default function PyramidQuestionnaire({
     }
   })
 
-  // Guardar cambio de modo
-  const handleSwitchMode = (newMode) => {
-    setMode(newMode)
+  // Consolidar el resultado integrado y calcular la pirámide única de 11 niveles
+  const finalizeIntegratedQuiz = (finalSitAnswers, finalClasAnswers) => {
+    // 1. Análisis de Etapa 1 (Situacional)
+    const sitList = Object.values(finalSitAnswers)
+    const hitosFuturos = sitList
+      .filter(a => a.isFutureHito || a.score === 0 || a.key === 'D')
+      .map(a => ({
+        preguntaId: a.id,
+        area: a.area,
+        pregunta: a.pregunta,
+        textoOpcion: a.textoOpcion || a.texto
+      }))
+
+    let totalScoreSit = 0
+    let countScoredSit = 0
+    sitList.forEach(a => {
+      const s = Number(a.score) || 0
+      if (s > 0) {
+        totalScoreSit += s
+        countScoredSit++
+      }
+    })
+    const avgSit = countScoredSit > 0 ? totalScoreSit / countScoredSit : 1 // escala de 1.0 a 3.0
+    // Normalizar a escala de 1 a 11
+    let levelSit = Math.round(1 + ((avgSit - 1) / 2) * 10)
+    if (levelSit < 1) levelSit = 1
+    if (levelSit > 11) levelSit = 11
+
+    // 2. Análisis de Etapa 2 (Sintonización Likert 55 preguntas, escala 55 a 275)
+    let totalScoreClas = 0
+    Object.values(finalClasAnswers).forEach(a => {
+      totalScoreClas += (Number(a.score) || 0)
+    })
+    let levelClas = Math.floor((totalScoreClas - 55) / 20) + 1
+    if (levelClas < 1) levelClas = 1
+    if (levelClas > 11) levelClas = 11
+
+    // 3. Nivel Final Integrado Ponderado (50% vivencial situacional + 50% sintonización de frecuencia)
+    let finalLevel = Math.round((levelSit * 0.5) + (levelClas * 0.5))
+    if (finalLevel < 1) finalLevel = 1
+    if (finalLevel > 11) finalLevel = 11
+
+    const consolidatedResult = {
+      tipo: 'integrado_unificado',
+      activeLevel: finalLevel,
+      levelName: LEVEL_NAMES_11[finalLevel],
+      zone: getLevelZone11(finalLevel),
+      levelSit,
+      levelClas,
+      situacionalScore: totalScoreSit,
+      clasicoScore: totalScoreClas,
+      totalScore: totalScoreSit + totalScoreClas,
+      maxPossibleScore: (48 * 3) + 275,
+      hitosFuturos,
+      hitosFuturosCount: hitosFuturos.length,
+      date: new Date().toLocaleDateString('es-ES')
+    }
+
+    const consolidatedAnswers = {
+      situacional: finalSitAnswers,
+      clasico: finalClasAnswers
+    }
+
+    setActiveResult(consolidatedResult)
+    setIsDone(true)
+
     try {
-      localStorage.setItem('benturi_quiz_mode', newMode)
+      localStorage.setItem('benturi_active_pyramid_result', JSON.stringify(consolidatedResult))
+      localStorage.setItem('benturi_fase2_result', JSON.stringify(consolidatedResult))
+      localStorage.setItem('benturi_fase2_answers', JSON.stringify(consolidatedAnswers))
+      localStorage.setItem('benturi_sit48_answers', JSON.stringify(finalSitAnswers))
+      localStorage.setItem('benturi_clas55_answers', JSON.stringify(finalClasAnswers))
+      localStorage.setItem('benturi_quiz_stage', '2')
     } catch (e) {
-      console.error(e)
+      console.error("Error guardando en localStorage:", e)
+    }
+
+    if (onComplete) {
+      onComplete({
+        tipo: 'integrado_unificado',
+        result: consolidatedResult,
+        answers: consolidatedAnswers
+      })
     }
   }
 
-  // Responder en modo Situacional (48)
+  // Responder en Etapa 1: Situacional (48)
   const handleAnswerSituational = (opcion) => {
     const q = PREGUNTAS_SITUACIONALES_48[sitIdx]
     const updated = {
@@ -131,31 +215,17 @@ export default function PyramidQuestionnaire({
     if (sitIdx < PREGUNTAS_SITUACIONALES_48.length - 1) {
       setSitIdx(i => i + 1)
     } else {
-      // Cuestionario completado
-      const diagResult = calculateSituationalPyramid(updated)
-      diagResult.tipo = 'situacional_48'
-      setActiveResult(diagResult)
-      setIsDone(true)
-
+      // Completó la Etapa 1 -> Avanza fluidamente a la Etapa 2
+      setStage(2)
       try {
-        localStorage.setItem('benturi_active_pyramid_result', JSON.stringify(diagResult))
-        localStorage.setItem('benturi_fase2_result', JSON.stringify(diagResult))
-        localStorage.setItem('benturi_fase2_answers', JSON.stringify(updated))
+        localStorage.setItem('benturi_quiz_stage', '2')
       } catch (e) {
         console.error(e)
-      }
-
-      if (onComplete) {
-        onComplete({
-          tipo: 'situacional_48',
-          result: diagResult,
-          answers: updated
-        })
       }
     }
   }
 
-  // Responder en modo Clásico (55)
+  // Responder en Etapa 2: Sintonización Clásica (55)
   const handleAnswerClassic = (score) => {
     const q = FASE2_QUESTIONS[clasIdx]
     const area = q.area || (q.text && q.text.includes(':') ? q.text.split(':')[0].trim() : 'General')
@@ -172,7 +242,7 @@ export default function PyramidQuestionnaire({
     }
     setClasAnswers(updated)
     try {
-      localStorage.setItem('benturi_fase2_answers', JSON.stringify(updated))
+      localStorage.setItem('benturi_clas55_answers', JSON.stringify(updated))
     } catch (e) {
       console.error(e)
     }
@@ -180,102 +250,73 @@ export default function PyramidQuestionnaire({
     if (clasIdx < FASE2_QUESTIONS.length - 1) {
       setClasIdx(i => i + 1)
     } else {
-      let totalScore = 0
-      Object.values(updated).forEach(a => { totalScore += (Number(a.score) || 0) })
-      let level = Math.floor((totalScore - 55) / 20) + 1
-      if (level < 1) level = 1
-      if (level > 11) level = 11
-
-      const diagResult = {
-        tipo: 'clasico_55',
-        activeLevel: level,
-        levelName: LEVEL_NAMES_11[level],
-        zone: getLevelZone11(level),
-        totalScore,
-        maxPossibleScore: 275,
-        date: new Date().toLocaleDateString('es-ES')
-      }
-
-      setActiveResult(diagResult)
-      setIsDone(true)
-
-      try {
-        localStorage.setItem('benturi_active_pyramid_result', JSON.stringify(diagResult))
-        localStorage.setItem('benturi_fase2_result', JSON.stringify(diagResult))
-      } catch (e) {
-        console.error(e)
-      }
-
-      if (onComplete) {
-        onComplete({
-          tipo: 'clasico_55',
-          result: diagResult,
-          answers: updated
-        })
-      }
+      // Completó la Etapa 2 -> Calcular y generar la Pirámide Única Consolidada
+      finalizeIntegratedQuiz(sitAnswers, updated)
     }
   }
 
-  // Reiniciar cuestionario
+  // Reiniciar cuestionario integrado
   const handleResetQuiz = () => {
     setIsDone(false)
-    if (mode === 'situacional_48') {
-      setSitIdx(0)
-      setSitAnswers({})
+    setStage(1)
+    setSitIdx(0)
+    setSitAnswers({})
+    setClasIdx(0)
+    setClasAnswers({})
+    try {
       localStorage.removeItem('benturi_sit48_answers')
-    } else {
-      setClasIdx(0)
-      setClasAnswers({})
+      localStorage.removeItem('benturi_clas55_answers')
+      localStorage.removeItem('benturi_quiz_stage')
+      localStorage.removeItem('benturi_active_pyramid_result')
+      localStorage.removeItem('benturi_fase2_result')
       localStorage.removeItem('benturi_fase2_answers')
+    } catch (e) {
+      console.error(e)
     }
-    localStorage.removeItem('benturi_active_pyramid_result')
-    localStorage.removeItem('benturi_fase2_result')
     if (onReset) onReset()
   }
 
-  // Renderizado cuando el cuestionario ya está finalizado (PIRÁMIDE REVELADA)
+  // =========================================================================
+  // RENDERIZADO CUANDO EL CUESTIONARIO ESTÁ FINALIZADO (PIRÁMIDE ÚNICA REVELADA)
+  // =========================================================================
   if (isDone && activeResult) {
-    const isSit = activeResult.tipo === 'situacional_48' || !!activeResult.factorId
     const activeLv = activeResult.activeLevel || 1
-    const totalLevels = isSit ? 12 : 11
+    const totalLevels = 11 // Pirámide Clásica Unificada de 11 niveles
 
     return (
       <div className="glass-card" style={{ padding: '24px 20px', textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
           <span className="zone-pill" style={{ background: 'rgba(0, 229, 255, 0.15)', borderColor: 'rgba(0, 229, 255, 0.4)', color: '#38bdf8' }}>
-            {isSit ? '🎯 Test Situacional (12 Peldaños)' : '⚡ Test Rápido (55 Preguntas)'}
+            ⚡ Evaluación Integrada (48 Situaciones + 55 Sintonización)
           </span>
           <span className="zone-pill" style={{ background: 'rgba(52, 211, 153, 0.15)', borderColor: 'rgba(52, 211, 153, 0.4)', color: '#34d399' }}>
-            {activeResult.zone || 'CALIBRADO'}
+            {activeResult.zone || getLevelZone11(activeLv)}
           </span>
         </div>
 
         <h2 style={{ fontSize: 'clamp(18px, 4.5vw, 24px)', color: '#ffffff', fontWeight: '800', marginBottom: '8px' }}>
-          DIAGNÓSTICO VIBRACIONAL ALCANZADO
+          PIRÁMIDE DEL AMOR • DIAGNÓSTICO VIBRACIONAL UNIFICADO
         </h2>
         <p style={{ fontSize: '13px', color: '#cbd5e1', maxWidth: '600px', margin: '0 auto 20px', lineHeight: '1.5' }}>
-          Tu frecuencia ha sido identificada con precisión. El Algoritmo utilizará este diagnóstico para sintonizar el eje temporal del pasado y las proyecciones futuras de la matriz.
+          Tu estado de conciencia ha sido calibrado integrando tus respuestas vivenciales y tu sintonización de frecuencia en los 11 niveles del Método Bénturi.
         </p>
 
-        {/* Visualización Piramidal Adaptativa */}
+        {/* Visualización Piramidal Adaptativa de 11 Niveles */}
         <div className="pyramid-container" style={{ margin: '20px auto 26px', maxWidth: '520px' }}>
           {Array.from({ length: totalLevels }, (_, i) => {
             const lv = totalLevels - i
             const isActive = lv === activeLv
             const widthPct = 25 + (i * (70 / totalLevels))
-            const levelInfo = isSit ? NIVELES_12[lv] : null
-            const name = isSit ? `${lv}. ${levelInfo?.nombre || ''}` : `${lv}. ${LEVEL_NAMES_11[lv] || ''}`
-            const zoneCls = isSit 
-              ? (lv <= 4 ? 'material' : lv <= 8 ? 'mental' : 'espiritual')
-              : getLevelClass11(lv)
+            const name = `${lv}. ${LEVEL_NAMES_11[lv] || ''}`
+            const zoneCls = getLevelClass11(lv)
 
             return (
               <div
                 key={lv}
                 className={`pyramid-level ${zoneCls}${isActive ? ' active' : ''}`}
-                style={{ 
-                  width: `${widthPct}%`, 
-                  boxShadow: isActive ? '0 0 20px rgba(0, 229, 255, 0.8)' : 'none',
+                style={{
+                  width: `${widthPct}%`,
+                  boxShadow: isActive ? '0 0 22px rgba(0, 229, 255, 0.85)' : 'none',
                   transform: isActive ? 'scale(1.03)' : 'scale(1)',
                   transition: 'all 0.3s ease'
                 }}
@@ -288,7 +329,7 @@ export default function PyramidQuestionnaire({
 
         {/* Tarjeta de Nivel Activo */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(10, 25, 47, 0.9))',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(10, 25, 47, 0.95))',
           border: '1.5px solid rgba(0, 229, 255, 0.4)',
           borderRadius: '14px',
           padding: '18px 20px',
@@ -297,32 +338,37 @@ export default function PyramidQuestionnaire({
           textAlign: 'left'
         }}>
           <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#38bdf8', fontWeight: '700' }}>
-            {isSit && activeResult.factorNombre ? activeResult.factorNombre : 'ESTADO VIBRACIONAL PREDOMINANTE'}
+            ESTADO VIBRACIONAL PREDOMINANTE EN LA PIRÁMIDE
           </div>
-          <div style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', marginTop: '4px' }}>
-            Escalón {activeLv}: {activeResult.levelName}
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#ffffff', marginTop: '4px' }}>
+            Escalón {activeLv}: {LEVEL_NAMES_11[activeLv]}
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
-            Puntuación obtenida: <strong style={{ color: '#38bdf8' }}>{activeResult.totalScore}</strong> {isSit ? 'puntos' : `/ 275`} • Fecha: {activeResult.date}
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', lineHeight: '1.5' }}>
+            Nivel Situacional Vivencial: <strong style={{ color: '#38bdf8' }}>{activeResult.levelSit || activeLv}/11</strong> • Sintonización de Frecuencia: <strong style={{ color: '#38bdf8' }}>{activeResult.levelClas || activeLv}/11</strong>
+          </div>
+          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+            Fecha de Calibración: {activeResult.date}
           </div>
 
           {/* Plan de Acción */}
-          <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: '#40e0d0', marginBottom: '8px' }}>
-              {isSit ? ACTION_PLANS_12[activeLv]?.title : ACTION_PLANS_11[activeLv]?.title}
+          {ACTION_PLANS_11[activeLv] && (
+            <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '12px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#40e0d0', marginBottom: '8px' }}>
+                {ACTION_PLANS_11[activeLv].title}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {ACTION_PLANS_11[activeLv].actions.map((act, idx) => (
+                  <div key={idx} style={{ fontSize: '12px', color: '#e2e8f0', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#38bdf8', flexShrink: 0 }}>✓</span>
+                    <span>{act}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {(isSit ? ACTION_PLANS_12[activeLv]?.actions : ACTION_PLANS_11[activeLv]?.actions)?.map((act, idx) => (
-                <div key={idx} style={{ fontSize: '12px', color: '#e2e8f0', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                  <span style={{ color: '#38bdf8' }}>✓</span>
-                  <span>{act}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
 
-          {/* Tarjeta de Hitos Futuros (Opción D en test situacional) */}
-          {isSit && activeResult.hitosFuturos && activeResult.hitosFuturos.length > 0 && (
+          {/* Hitos No Vividos Detectados */}
+          {activeResult.hitosFuturos && activeResult.hitosFuturos.length > 0 && (
             <div style={{
               marginTop: '16px',
               padding: '12px 14px',
@@ -332,20 +378,20 @@ export default function PyramidQuestionnaire({
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#38bdf8' }}>
                 <span>🛡️</span>
-                <span>{activeResult.hitosFuturos.length} Hitos No Vividos Detectados (Indicador de Futuro)</span>
+                <span>{activeResult.hitosFuturos.length} Hitos No Vividos Registrados (Indicadores para el Futuro)</span>
               </div>
               <p style={{ fontSize: '11px', color: '#cbd5e1', margin: '4px 0 8px', lineHeight: '1.4' }}>
-                Al marcar "Jamás me ha ocurrido" en estas situaciones, el motor de Bénturi las indexa como eventos potenciales no cristalizados para el análisis de futuro:
+                Eventos potenciales que el Algoritmo Bénturi toma como referencia para no interpretar como vivencias pasadas:
               </p>
-              <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {activeResult.hitosFuturos.slice(0, 5).map((h, i) => (
+              <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {activeResult.hitosFuturos.slice(0, 4).map((h, i) => (
                   <div key={i} style={{ fontSize: '11px', color: '#94a3b8' }}>
                     • [{h.area}] <em>"{h.textoOpcion}"</em>
                   </div>
                 ))}
-                {activeResult.hitosFuturos.length > 5 && (
+                {activeResult.hitosFuturos.length > 4 && (
                   <div style={{ fontSize: '11px', color: '#38bdf8', fontStyle: 'italic' }}>
-                    + {activeResult.hitosFuturos.length - 5} situaciones más registradas en tu informe.
+                    + {activeResult.hitosFuturos.length - 4} hitos más registrados en tu diagnóstico.
                   </div>
                 )}
               </div>
@@ -366,76 +412,97 @@ export default function PyramidQuestionnaire({
             padding: '8px'
           }}
         >
-          🔄 Repetir o cambiar modalidad de cuestionario
+          🔄 Repetir Evaluación Vibracional
         </button>
       </div>
     )
   }
 
-  // ==================== VISTA DEL CUESTIONARIO ACTIVO ====================
+  // =========================================================================
+  // VISTA DEL CUESTIONARIO INTEGRADO ACTIVO (ETAPA 1 + ETAPA 2 EN FLUJO CONTINUO)
+  // =========================================================================
   return (
     <div className="stack" style={{ gap: '16px', width: '100%', maxWidth: '640px', margin: '0 auto' }}>
-      
-      {/* Selector de Modalidad (Pestañas Superiores) */}
+
+      {/* Indicador de Flujo Integrado de 2 Etapas */}
       <div style={{
         display: 'flex',
-        background: 'rgba(10, 25, 47, 0.75)',
-        border: '1px solid rgba(127, 179, 213, 0.25)',
+        alignItems: 'center',
+        background: 'rgba(10, 25, 47, 0.85)',
+        border: '1px solid rgba(0, 229, 255, 0.25)',
         borderRadius: '12px',
-        padding: '4px',
-        gap: '4px'
+        padding: '10px 14px',
+        gap: '12px'
       }}>
-        <button
-          type="button"
-          onClick={() => handleSwitchMode('situacional_48')}
-          style={{
-            flex: 1,
-            padding: '10px 12px',
-            borderRadius: '9px',
-            border: 'none',
-            cursor: 'pointer',
-            fontWeight: '700',
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          opacity: stage === 1 ? 1 : 0.65
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '50%',
+            background: stage === 1 ? '#00e5ff' : 'rgba(56, 189, 248, 0.2)',
+            color: stage === 1 ? '#0a192f' : '#94a3b8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             fontSize: '12px',
-            transition: 'all 0.2s ease',
-            background: mode === 'situacional_48' ? 'linear-gradient(135deg, #0284c7, #0ea5e9)' : 'transparent',
-            color: mode === 'situacional_48' ? '#ffffff' : '#94a3b8',
-            boxShadow: mode === 'situacional_48' ? '0 4px 12px rgba(14, 165, 233, 0.3)' : 'none'
-          }}
-        >
-          🎯 Test Situacional (48 Preguntas)
-          <span style={{ display: 'block', fontSize: '10px', opacity: 0.85, fontWeight: '500' }}>
-            12 Peldaños • Opción Inmunidad
-          </span>
-        </button>
+            fontWeight: '800'
+          }}>
+            1
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: stage === 1 ? '#00e5ff' : '#94a3b8' }}>
+              ETAPA 1: SITUACIONAL
+            </div>
+            <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+              48 Situaciones Vivenciales
+            </div>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => handleSwitchMode('clasico_55')}
-          style={{
-            flex: 1,
-            padding: '10px 12px',
-            borderRadius: '9px',
-            border: 'none',
-            cursor: 'pointer',
-            fontWeight: '700',
+        <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.2)' }}>→</div>
+
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          opacity: stage === 2 ? 1 : 0.65
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '50%',
+            background: stage === 2 ? '#00e5ff' : 'rgba(56, 189, 248, 0.2)',
+            color: stage === 2 ? '#0a192f' : '#94a3b8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             fontSize: '12px',
-            transition: 'all 0.2s ease',
-            background: mode === 'clasico_55' ? 'linear-gradient(135deg, #0284c7, #0ea5e9)' : 'transparent',
-            color: mode === 'clasico_55' ? '#ffffff' : '#94a3b8',
-            boxShadow: mode === 'clasico_55' ? '0 4px 12px rgba(14, 165, 233, 0.3)' : 'none'
-          }}
-        >
-          ⚡ Escala Rápida (55 Preguntas)
-          <span style={{ display: 'block', fontSize: '10px', opacity: 0.85, fontWeight: '500' }}>
-            Escala Likert 1 a 5
-          </span>
-        </button>
+            fontWeight: '800'
+          }}>
+            2
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: stage === 2 ? '#00e5ff' : '#94a3b8' }}>
+              ETAPA 2: SINTONIZACIÓN
+            </div>
+            <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+              55 Preguntas de Frecuencia
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ========================================================== */}
-      {/* MODO 1: TEST SITUACIONAL (48 PREGUNTAS ABCD)              */}
+      {/* ETAPA 1: TEST SITUACIONAL (48 PREGUNTAS ABCD)              */}
       {/* ========================================================== */}
-      {mode === 'situacional_48' && (() => {
+      {stage === 1 && (() => {
         const currentQ = PREGUNTAS_SITUACIONALES_48[sitIdx] || PREGUNTAS_SITUACIONALES_48[0]
         const factor = FACTORES_PIRAMIDE[currentQ.factor]
         const nivel = NIVELES_12[currentQ.level]
@@ -455,14 +522,14 @@ export default function PyramidQuestionnaire({
               <div className="glass-card" style={{ padding: '14px 18px', textAlign: 'left' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span 
-                      style={{ 
+                    <span
+                      style={{
                         display: 'inline-block',
-                        width: '8px', 
-                        height: '8px', 
-                        borderRadius: '50%', 
-                        background: factor.color 
-                      }} 
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: factor.color
+                      }}
                     />
                     <span style={{ fontSize: '11px', fontWeight: '800', color: factor.color, letterSpacing: '0.04em' }}>
                       FACTOR {currentQ.factor} • {nivel.nombre}
@@ -470,27 +537,26 @@ export default function PyramidQuestionnaire({
                   </div>
 
                   <span style={{ fontSize: '12px', fontWeight: '700', color: '#38bdf8' }}>
-                    {progressPct}% ({sitIdx + 1}/48)
+                    Etapa 1: {progressPct}% ({sitIdx + 1}/48)
                   </span>
                 </div>
 
-                {/* Subtítulo del nivel */}
                 <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '2px' }}>
-                  Peldaño {currentQ.level}: {nivel.subtitulo}
+                  Situación {currentQ.level}: {nivel.subtitulo}
                 </div>
 
                 <div className="progress-track" style={{ marginTop: '10px', height: '6px' }}>
-                  <div 
-                    className="progress-fill" 
-                    style={{ 
+                  <div
+                    className="progress-fill"
+                    style={{
                       width: `${progressPct}%`,
                       background: `linear-gradient(90deg, #0284c7, ${factor.color})`
-                    }} 
+                    }}
                   />
                 </div>
               </div>
 
-              {/* Tarjeta de la Pregunta */}
+              {/* Tarjeta de la Pregunta Situacional */}
               <div className="question-card" style={{ padding: '20px', textAlign: 'left' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <span style={{
@@ -522,7 +588,6 @@ export default function PyramidQuestionnaire({
                   )}
                 </div>
 
-                {/* Texto de la situación */}
                 <h3 style={{
                   fontSize: 'clamp(15px, 3.8vw, 17px)',
                   fontWeight: '600',
@@ -564,7 +629,6 @@ export default function PyramidQuestionnaire({
                           e.currentTarget.style.borderColor = isD ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.1)'
                         }}
                       >
-                        {/* Círculo indicador A, B, C, D */}
                         <div style={{
                           flexShrink: 0,
                           width: '28px',
@@ -582,7 +646,6 @@ export default function PyramidQuestionnaire({
                           {opc.key}
                         </div>
 
-                        {/* Texto de la opción */}
                         <div style={{ flex: 1 }}>
                           {isD && (
                             <div style={{
@@ -618,9 +681,9 @@ export default function PyramidQuestionnaire({
       })()}
 
       {/* ========================================================== */}
-      {/* MODO 2: ESCALA RÁPIDA CLÁSICA (55 PREGUNTAS LIKERT)        */}
+      {/* ETAPA 2: SINTONIZACIÓN CLÁSICA (55 PREGUNTAS LIKERT)       */}
       {/* ========================================================== */}
-      {mode === 'clasico_55' && (() => {
+      {stage === 2 && (() => {
         const currentQ = FASE2_QUESTIONS[clasIdx] || FASE2_QUESTIONS[0]
         const progressPct = Math.round(((clasIdx + 1) / FASE2_QUESTIONS.length) * 100)
         const zoneCls = getLevelClass11(currentQ.level)
@@ -628,13 +691,13 @@ export default function PyramidQuestionnaire({
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div className="glass-card" style={{ padding: '14px 18px' }}>
+            <div className="glass-card" style={{ padding: '14px 18px', textAlign: 'left' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className={`zone-pill ${zoneCls}`}>
-                  {zoneTitle}
+                  {zoneTitle} • Escalón {currentQ.level} ({LEVEL_NAMES_11[currentQ.level]})
                 </span>
                 <span style={{ fontSize: '13px', fontWeight: '800', color: '#40e0d0' }}>
-                  {progressPct}% ({clasIdx + 1}/55)
+                  Etapa 2: {progressPct}% ({clasIdx + 1}/55)
                 </span>
               </div>
               <div className="progress-track" style={{ marginTop: '10px', height: '6px' }}>
@@ -642,32 +705,38 @@ export default function PyramidQuestionnaire({
               </div>
             </div>
 
-            <div className="question-card" style={{ padding: '20px' }}>
+            <div className="question-card" style={{ padding: '20px', textAlign: 'left' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700' }}>
                   PREGUNTA {clasIdx + 1} DE 55
                 </span>
-                {clasIdx > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setClasIdx(i => i - 1)}
-                    style={{ background: 'transparent', border: 'none', color: '#40e0d0', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    ← Anterior
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (clasIdx > 0) {
+                      setClasIdx(i => i - 1)
+                    } else {
+                      // Volver a la última pregunta de la Etapa 1
+                      setStage(1)
+                      setSitIdx(PREGUNTAS_SITUACIONALES_48.length - 1)
+                    }
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: '#40e0d0', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  ← {clasIdx > 0 ? 'Pregunta anterior' : 'Volver a Etapa 1'}
+                </button>
               </div>
 
-              <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', fontSize: '16px', fontWeight: '500', lineHeight: '1.5', marginBottom: '20px' }}>
+              <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', fontSize: '16px', fontWeight: '500', lineHeight: '1.5', marginBottom: '20px', color: '#ffffff' }}>
                 {currentQ.text}
               </div>
 
               <div className="likert-scale">
                 {[1, 2, 3, 4, 5].map(n => (
-                  <button 
-                    key={n} 
-                    className="likert-btn" 
-                    onClick={() => handleAnswerClassic(n)} 
+                  <button
+                    key={n}
+                    className="likert-btn"
+                    onClick={() => handleAnswerClassic(n)}
                     aria-label={`${n} de 5`}
                   >
                     {n}

@@ -554,10 +554,18 @@ app.post('/api/generate-report', async (req, res) => {
             let amorText = "";
             if (amorInfo && (amorInfo.result || (amorInfo.answers && Object.keys(amorInfo.answers).length > 0))) {
                 const diag = amorInfo.result;
+                const isIntegrado = amorInfo.tipo === "integrado_unificado" || (diag && diag.tipo === "integrado_unificado");
                 const isSituacional = amorInfo.tipo === "situacional_48" || (diag && diag.factorId);
                 amorText += `DIAGNÓSTICO VIBRACIONAL DEL CONSULTANTE:\n`;
                 if (diag) {
-                    if (isSituacional) {
+                    if (isIntegrado) {
+                        amorText += `- Modalidad: Test Integrado Bénturi (48 Situaciones Vivenciales + 55 Sintonización Likert - Pirámide Unificada de 11 Niveles)\n`;
+                        amorText += `- Escalón Unificado Diagnosticado: Escalón ${diag.activeLevel} (${diag.levelName}) [Zona: ${diag.zone || "N/A"}]\n`;
+                        if (diag.levelSit && diag.levelClas) {
+                            amorText += `- Calibración: Nivel Situacional: ${diag.levelSit}/11 | Nivel Frecuencia: ${diag.levelClas}/11\n`;
+                        }
+                        amorText += `- Puntuación Consolidada: ${diag.totalScore}\n`;
+                    } else if (isSituacional) {
                         amorText += `- Modalidad: Test Situacional de Proyección Bénturi (48 Preguntas en 12 Peldaños)\n`;
                         amorText += `- Factor Predominante: ${diag.factorNombre || ("Factor " + diag.factorId)}\n`;
                         amorText += `- Escalón Diagnosticado: Escalón ${diag.activeLevel} (${diag.levelName}) [Zona: ${diag.zone || "N/A"}]\n`;
@@ -571,7 +579,15 @@ app.post('/api/generate-report', async (req, res) => {
                     amorText += `\n`;
                 }
                 if (amorInfo.answers && Object.keys(amorInfo.answers).length > 0) {
-                    const ansList = Object.values(amorInfo.answers);
+                    let ansList = [];
+                    if (amorInfo.answers.situacional || amorInfo.answers.clasico) {
+                        ansList = [
+                            ...Object.values(amorInfo.answers.situacional || {}),
+                            ...Object.values(amorInfo.answers.clasico || {})
+                        ];
+                    } else {
+                        ansList = Object.values(amorInfo.answers);
+                    }
                     const hitosD = ansList.filter(a => a.isFutureHito || a.key === "D" || a.score === 0);
                     const vivencias = ansList.filter(a => !(a.isFutureHito || a.key === "D" || a.score === 0));
                     if (hitosD.length > 0) {
