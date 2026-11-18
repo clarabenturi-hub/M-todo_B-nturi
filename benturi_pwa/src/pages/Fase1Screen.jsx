@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import { FULL_DECK } from '../constants/appData'
-import { generarPDFDesdeMarkdown } from '../utils/pdf_generator.js'
+import { generarPDFDesdeMarkdown, stripEmojis } from '../utils/pdf_generator.js'
 import { generateDeterministicReport } from '../utils/brain_engine.js'
 
 export default function Fase1Screen() {
@@ -88,7 +88,7 @@ export default function Fase1Screen() {
     setIsGeneratingPdf(true);
     try {
       if (streamedReport) {
-        await generarPDFDesdeMarkdown(streamedReport, "Informe_Cuantico_Benturi.pdf");
+        await generarPDFDesdeMarkdown(streamedReport, "Informe de Proyección Determinista - Método Bénturi");
       } else {
         alert("El informe aún no se ha generado correctamente.");
       }
@@ -319,7 +319,7 @@ export default function Fase1Screen() {
                     remarkPlugins={[remarkGfm]} 
                     rehypePlugins={[rehypeRaw]}
                   >
-                    {streamedReport || loadingMessages[loadingMsgIndex]}
+                    {stripEmojis(streamedReport) || loadingMessages[loadingMsgIndex]}
                   </ReactMarkdown>
                   {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
                 </>

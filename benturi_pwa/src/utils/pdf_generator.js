@@ -106,8 +106,8 @@ function enhanceReportDOM(container) {
         continue;
       }
 
-      // Escenario probabilístico consolidado
-      if (/^_?\*?\*?Escenario probabil[íi]stico consolidado\s*:/i.test(txt)) {
+      // Escenario probabilístico consolidado (24 cartas) o conclusión probabilística (6 cartas)
+      if (/^_?\*?\*?(Escenario probabil[íi]stico consolidado\s*:|"Existe una probabilidad|Existe una probabilidad\s+(baja|media|alta|alt[íi]sima))/i.test(txt)) {
         const banner = document.createElement('div');
         banner.className = 'consolidated-banner';
         banner.textContent = txt.replace(/^[_*]+|[_*]+$/g, '');
@@ -115,13 +115,17 @@ function enhanceReportDOM(container) {
         continue;
       }
 
-      // Cita final del punto 6 ("Ahora que conoces esa proyección...")
-      if (upper.includes('AHORA QUE CONOCES ESA PROYECCIÓN DE FUTURO') || upper.includes('AHORA QUE CONOCES ESA PROYECCION DE FUTURO')) {
+      // Citas encuadradas del punto 4, 5 o 6 ("Ahora que conoces...", "Cuando compruebes...", "Acuérdate, con el poder número tres...")
+      if (
+        upper.includes('AHORA QUE CONOCES ESA PROYECCIÓN DE FUTURO') ||
+        upper.includes('AHORA QUE CONOCES ESA PROYECCION DE FUTURO') ||
+        upper.includes('CUANDO COMPRUEBES QUE ESTA PROYECCIÓN') ||
+        upper.includes('CUANDO COMPRUEBES QUE ESTA PROYECCION') ||
+        (upper.includes('ACUÉRDATE') && upper.includes('DECIDE') && upper.includes('CAMBIAR DE VÍA'))
+      ) {
         const callout = document.createElement('div');
         callout.className = 'gold-quote-box';
-        callout.textContent = txt.replace(/^[_*"]+|[._*"]+$/g, (m) => m.includes('.') ? '..."' : '"');
-        if (!callout.textContent.startsWith('"')) callout.textContent = '"' + callout.textContent;
-        if (!callout.textContent.endsWith('"')) callout.textContent = callout.textContent + '"';
+        callout.textContent = txt.replace(/^[_*]+|[_*]+$/g, '');
         el.replaceWith(callout);
         continue;
       }
@@ -152,7 +156,7 @@ function enhanceReportDOM(container) {
       h.className = 'chapter-heading';
     } else if (/^(TRABAJO\s*\/|DINERO\s*\/|AMOR\s*\/|SALUD\s*\/|CRECIMIENTO\s+PERSONAL\s*\/)/i.test(txt)) {
       h.className = 'facet-heading-marker';
-    } else if (/^(PRIMER PODER|SEGUNDO PODER|TERCER PODER|[123]\.\s*(INTEGRACI[ÓO]N|EJECUCI[ÓO]N)\s+DEL)/i.test(txt)) {
+    } else if (/^(PRIMER PODER|SEGUNDO PODER|TERCER PODER|[123]\s*[-.]\s*(PRIMER|SEGUNDO|TERCER)\s+PODER|[123]\.\s*(INTEGRACI[ÓO]N|EJECUCI[ÓO]N)\s+DEL|5\.[12]\s*-)/i.test(txt)) {
       h.className = 'power-heading-marker';
     }
   });
@@ -281,15 +285,24 @@ function enhanceReportDOM(container) {
     }
   }
 
-  // 5. Estilizar tablas de VECTOR-CARTA (y convertir listas de vectores en tablas si el LLM usó viñetas)
+  // 5. Estilizar tablas de VECTOR-CARTA (y convertir listas o párrafos de vectores en tablas si el LLM usó viñetas)
   container.querySelectorAll('ul').forEach(ul => {
     const items = Array.from(ul.querySelectorAll('li'));
-    const isVectorList = items.length > 0 && items.every(li => /\[?C\d{1,2}\]?/i.test(li.textContent));
+    const isVectorList = items.length > 0 && items.every(li => /\[?C\d{1,2}\]?|(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR/i.test(li.textContent));
     if (isVectorList) {
       const table = buildVectorTableFromList(items);
       ul.replaceWith(table);
     }
   });
+
+  // Si en el informe de 6 cartas los vectores vinieron como párrafos sueltos (PRIMERA CARTA-VECTOR...), agruparlos en tabla
+  const pNodes = Array.from(container.querySelectorAll('p'));
+  const vectorParas = pNodes.filter(p => /^[\s*_]*(\[?C\d{1,2}\]?\s*)?(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR/i.test(p.textContent.trim()));
+  if (vectorParas.length >= 2) {
+    const table = buildVectorTableFromList(vectorParas);
+    container.insertBefore(table, vectorParas[0]);
+    vectorParas.forEach(p => p.remove());
+  }
 
   container.querySelectorAll('table').forEach(table => {
     const firstHeader = table.querySelector('th');
@@ -470,7 +483,17 @@ function formatSpanishDate() {
 }
 
 function formatVectorLabel(raw) {
-  const clean = raw.replace(/\*\*/g, '').trim();
+  const clean = raw.replace(/[*_]/g, '').trim();
+  // Caso 6 cartas: "[C01] PRIMERA CARTA-VECTOR DE PROYECCIÓN: CINCO DE ESPADAS" o "PRIMERA CARTA-VECTOR DE PROYECCIÓN: CINCO DE ESPADAS"
+  const m6 = clean.match(/^(\[?C\d{1,2}\]?\s*)?((?:PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR(?:\s+DE\s+PROYECCI[ÓO]N)?)\s*:?\s*(.+)$/i);
+  if (m6) {
+    const ordMap = { PRIMERA: '[C01]', SEGUNDA: '[C03]', TERCERA: '[C05]', CUARTA: '[C07]', QUINTA: '[C09]', SEXTA: '[C11]' };
+    const ordKey = m6[2].split(/\s+/)[0].toUpperCase();
+    const code = m6[1] ? m6[1].trim().toUpperCase() : (ordMap[ordKey] || '');
+    const label = m6[2].toUpperCase();
+    const cardName = m6[3].trim();
+    return `<span class="vec-code">${code ? code + ' ' : ''}${label}:</span><br><span class="vec-card">${cardName}</span>`;
+  }
   const m = clean.match(/^(\[?C\d{1,2}\]?)\s*[-–:]?\s*(.+)$/i);
   if (m) {
     let code = m[1].toUpperCase();
