@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { useTexts } from '../hooks/useTexts'
 import { useCombinations } from '../hooks/useCombinations'
 import Dialog from '../components/Dialog'
@@ -12,7 +15,7 @@ import {
   getLevelClass, 
   ACTION_PLANS 
 } from '../constants/appData'
-import { generarPDFDesdeMarkdown } from '../utils/pdf_generator.js'
+import { generarPDFDesdeMarkdown, stripEmojis } from '../utils/pdf_generator.js'
 
 const LIKERT_TEXTS = {
   1: "Totalmente en desacuerdo",
@@ -281,7 +284,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     setIsGeneratingPdf(true);
     try {
       if (streamedReport) {
-        await generarPDFDesdeMarkdown(streamedReport, "Informe_Cuantico_24_Vectores_Benturi.pdf");
+        await generarPDFDesdeMarkdown(streamedReport, "Informe de Proyección Determinista - Método Bénturi");
       } else {
         alert("El informe aún no se ha generado correctamente.");
       }
@@ -664,12 +667,17 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
                 </div>
               </div>
 
-              <div className="glass-card-light custom-scroll-container" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', whiteSpace: 'pre-wrap', color: '#FFFFFF', fontSize: '13px', lineHeight: '1.5', fontFamily: 'monospace'}}>
+              <div className="glass-card-light custom-scroll-container report-content-markdown" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6'}}>
                 {streamError ? (
                   <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
                 ) : (
                   <>
-                    {streamedReport || loadingMessages[loadingMsgIndex]}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw]}
+                    >
+                      {stripEmojis(streamedReport) || loadingMessages[loadingMsgIndex]}
+                    </ReactMarkdown>
                     {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
                   </>
                 )}
