@@ -631,47 +631,47 @@ app.post('/api/generate-report', async (req, res) => {
 
             contextText = extractedDataText + `Instrucción: Genera el informe final de 24 cartas usando tu prompt de estructura específico (INFORME USUARIO 24) respetando minuciosamente todas las directrices y normas. Recuerda que la tirada es panorámica general (no requiere pregunta individual) e integra en la SECCIÓN PRELIMINAR el Diagnóstico Vibracional y la Pirámide del Amor basándote en los datos del punto 0.3.`;
         } else {
-            // Matriz 6 - Mapeo de Posiciones Algoritmo Bénturi (C1, C3, C5, C7, C9, C11)
+            // Tirada de 6 Cartas - Nomenclatura exclusiva de 6 vectores (PRIMERA a SEXTA CARTA-VECTOR DE PROYECCIÓN)
             vectoresArray = [
-                { posicion: "Posición C1 (Carta 1)", nombre_carta: result.c1, significado_determinista: getDeterministicInfo(result.c1) },
-                { posicion: "Posición C3 (Carta 2)", nombre_carta: result.c2, significado_determinista: getDeterministicInfo(result.c2) },
-                { posicion: "Posición C5 (Carta 3)", nombre_carta: result.c3, significado_determinista: getDeterministicInfo(result.c3) },
-                { posicion: "Posición C7 (Carta 4)", nombre_carta: result.c4, significado_determinista: getDeterministicInfo(result.c4) },
-                { posicion: "Posición C9 (Carta 5)", nombre_carta: result.c5, significado_determinista: getDeterministicInfo(result.c5) },
-                { posicion: "Posición C11 (Carta 6)", nombre_carta: result.c6, significado_determinista: getDeterministicInfo(result.c6) }
+                { orden: "PRIMERA CARTA-VECTOR DE PROYECCIÓN", nombre_carta: result.c1, significado_determinista: getDeterministicInfo(result.c1) },
+                { orden: "SEGUNDA CARTA-VECTOR DE PROYECCIÓN", nombre_carta: result.c2, significado_determinista: getDeterministicInfo(result.c2) },
+                { orden: "TERCERA CARTA-VECTOR DE PROYECCIÓN", nombre_carta: result.c3, significado_determinista: getDeterministicInfo(result.c3) },
+                { orden: "CUARTA CARTA-VECTOR DE PROYECCIÓN", nombre_carta: result.c4, significado_determinista: getDeterministicInfo(result.c4) },
+                { orden: "QUINTA CARTA-VECTOR DE PROYECCIÓN", nombre_carta: result.c5, significado_determinista: getDeterministicInfo(result.c5) },
+                { orden: "SEXTA CARTA-VECTOR DE PROYECCIÓN", nombre_carta: result.c6, significado_determinista: getDeterministicInfo(result.c6) }
             ];
 
             // 1. CUÁDRUPLES (Hacia adelante)
             const cuadruples = [
-                [{c: result.c1, p: "C1"}, {c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}],
-                [{c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}],
-                [{c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}, {c: result.c6, p: "C11"}]
+                [{c: result.c1, p: "Carta 1"}, {c: result.c2, p: "Carta 2"}, {c: result.c3, p: "Carta 3"}, {c: result.c4, p: "Carta 4"}],
+                [{c: result.c2, p: "Carta 2"}, {c: result.c3, p: "Carta 3"}, {c: result.c4, p: "Carta 4"}, {c: result.c5, p: "Carta 5"}],
+                [{c: result.c3, p: "Carta 3"}, {c: result.c4, p: "Carta 4"}, {c: result.c5, p: "Carta 5"}, {c: result.c6, p: "Carta 6"}]
             ];
 
             // 2. TRIPLES (Hacia adelante)
             const triples = [
-                [{c: result.c1, p: "C1"}, {c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}],
-                [{c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}],
-                [{c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}],
-                [{c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}, {c: result.c6, p: "C11"}]
+                [{c: result.c1, p: "Carta 1"}, {c: result.c2, p: "Carta 2"}, {c: result.c3, p: "Carta 3"}],
+                [{c: result.c2, p: "Carta 2"}, {c: result.c3, p: "Carta 3"}, {c: result.c4, p: "Carta 4"}],
+                [{c: result.c3, p: "Carta 3"}, {c: result.c4, p: "Carta 4"}, {c: result.c5, p: "Carta 5"}],
+                [{c: result.c4, p: "Carta 4"}, {c: result.c5, p: "Carta 5"}, {c: result.c6, p: "Carta 6"}]
             ];
 
             // 3. DOBLES (Hacia adelante)
             const dobles = [
-                [{c: result.c1, p: "C1"}, {c: result.c2, p: "C3"}],
-                [{c: result.c2, p: "C3"}, {c: result.c3, p: "C5"}],
-                [{c: result.c3, p: "C5"}, {c: result.c4, p: "C7"}],
-                [{c: result.c4, p: "C7"}, {c: result.c5, p: "C9"}],
-                [{c: result.c5, p: "C9"}, {c: result.c6, p: "C11"}]
+                [{c: result.c1, p: "Carta 1"}, {c: result.c2, p: "Carta 2"}],
+                [{c: result.c2, p: "Carta 2"}, {c: result.c3, p: "Carta 3"}],
+                [{c: result.c3, p: "Carta 3"}, {c: result.c4, p: "Carta 4"}],
+                [{c: result.c4, p: "Carta 4"}, {c: result.c5, p: "Carta 5"}],
+                [{c: result.c5, p: "Carta 5"}, {c: result.c6, p: "Carta 6"}]
             ];
 
             // 4. DOBLES INVERSAS (Hacia atrás)
             const doblesInversas = [
-                [{c: result.c6, p: "C11"}, {c: result.c5, p: "C9"}],
-                [{c: result.c5, p: "C9"}, {c: result.c4, p: "C7"}],
-                [{c: result.c4, p: "C7"}, {c: result.c3, p: "C5"}],
-                [{c: result.c3, p: "C5"}, {c: result.c2, p: "C3"}],
-                [{c: result.c2, p: "C3"}, {c: result.c1, p: "C1"}]
+                [{c: result.c6, p: "Carta 6"}, {c: result.c5, p: "Carta 5"}],
+                [{c: result.c5, p: "Carta 5"}, {c: result.c4, p: "Carta 4"}],
+                [{c: result.c4, p: "Carta 4"}, {c: result.c3, p: "Carta 3"}],
+                [{c: result.c3, p: "Carta 3"}, {c: result.c2, p: "Carta 2"}],
+                [{c: result.c2, p: "Carta 2"}, {c: result.c1, p: "Carta 1"}]
             ];
 
             // Procesar todos los grupos
@@ -684,19 +684,18 @@ app.post('/api/generate-report', async (req, res) => {
                 });
             });
 
-            let extractedDataText = "DATOS EXTRAÍDOS DEL BACKEND PARA EL INFORME:\n";
+            let extractedDataText = "DATOS EXTRAÍDOS DEL BACKEND PARA EL INFORME DE 6 CARTAS:\n";
             extractedDataText += `PREGUNTA DEL CONSULTANTE: ${question}\n\n`;
-            extractedDataText += `0.1 & 0.3 "SIGNIFICADO DETERMINISTA DE CADA VECTOR CARTA":\n`;
-            extractedDataText += JSON.stringify(vectoresArray, null, 2) + "\n\n";
-            extractedDataText += `0.2 "ALGORITMO ASOCIACIONES DE CARTAS MÉTODO BÉNTURI" (LISTADO DE ASOCIACIONES DE CARTAS ENCONTRADAS):\n`;
-            
+            extractedDataText += `0.1 "LISTADO DE ASOCIACIONES DE CARTAS ENCONTRADAS":\n`;
             if (combosReales.length > 0) {
                 extractedDataText += combosReales.join("\n") + "\n\n";
             } else {
                 extractedDataText += "(Ninguna asociación contigua válida encontrada)\n\n";
             }
+            extractedDataText += `0.2 "ACEPCIÓN DETERMINISTA VECTOR- CARTA":\n`;
+            extractedDataText += JSON.stringify(vectoresArray, null, 2) + "\n\n";
 
-            contextText = extractedDataText + `\nInstrucción: Genera el informe final rellenando la estructura de tu prompt base (INFORME USUARIO) utilizando únicamente los datos aquí proporcionados. Recuerda usar la nomenclatura de posiciones (C1, C3, C5, C7, C9, C11) al referirte a las cartas.`;
+            contextText = extractedDataText + `\nInstrucción: Genera el informe final de 6 cartas rellenando exactamente la estructura de tu prompt base (puntos 1 al 6 y Bloque Final Obligatorio) utilizando únicamente los datos aquí proporcionados. Inicia cada una de las 6 cartas en la sección 2 con su etiqueta exacta (PRIMERA CARTA-VECTOR DE PROYECCIÓN: [NOMBRE], SEGUNDA CARTA-VECTOR DE PROYECCIÓN: [NOMBRE], etc.) sin usar códigos C1..C11 y sin incluir ningún emoji.`;
         }
 
         res.setHeader('Content-Type', 'text/event-stream');

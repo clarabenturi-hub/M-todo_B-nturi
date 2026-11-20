@@ -484,15 +484,12 @@ function formatSpanishDate() {
 
 function formatVectorLabel(raw) {
   const clean = raw.replace(/[*_]/g, '').trim();
-  // Caso 6 cartas: "[C01] PRIMERA CARTA-VECTOR DE PROYECCIÓN: CINCO DE ESPADAS" o "PRIMERA CARTA-VECTOR DE PROYECCIÓN: CINCO DE ESPADAS"
-  const m6 = clean.match(/^(\[?C\d{1,2}\]?\s*)?((?:PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR(?:\s+DE\s+PROYECCI[ÓO]N)?)\s*:?\s*(.+)$/i);
+  // Caso 6 cartas: "PRIMERA CARTA-VECTOR DE PROYECCIÓN: CINCO DE ESPADAS" (sin códigos C01..C11 de 24 cartas)
+  const m6 = clean.match(/^(?:\[?C\d{1,2}\]?\s*)?((?:PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR(?:\s+DE\s+PROYECCI[ÓO]N)?)\s*:?\s*(.+)$/i);
   if (m6) {
-    const ordMap = { PRIMERA: '[C01]', SEGUNDA: '[C03]', TERCERA: '[C05]', CUARTA: '[C07]', QUINTA: '[C09]', SEXTA: '[C11]' };
-    const ordKey = m6[2].split(/\s+/)[0].toUpperCase();
-    const code = m6[1] ? m6[1].trim().toUpperCase() : (ordMap[ordKey] || '');
-    const label = m6[2].toUpperCase();
-    const cardName = m6[3].trim();
-    return `<span class="vec-code">${code ? code + ' ' : ''}${label}:</span><br><span class="vec-card">${cardName}</span>`;
+    const label = m6[1].toUpperCase();
+    const cardName = m6[2].trim();
+    return `<span class="vec-code">${label}:</span><br><span class="vec-card">${cardName}</span>`;
   }
   const m = clean.match(/^(\[?C\d{1,2}\]?)\s*[-–:]?\s*(.+)$/i);
   if (m) {
@@ -557,21 +554,41 @@ function buildClosingSection(container) {
 
   if (startIdx === -1) return;
 
+  const is24Report = all.some(el => {
+    const u = el.textContent.toUpperCase();
+    return u.includes('24 VECTORES') || u.includes('322 BILLONES') || u.includes('7.- PROYECCIÓN DE CONTINUIDAD');
+  });
+
   const toRemove = all.slice(startIdx);
   const anchor = toRemove[0];
 
-  const section7Heading = document.createElement('h2');
-  section7Heading.className = 'section-heading';
-  section7Heading.textContent = '7.- PROYECCIÓN DE CONTINUIDAD Y ACCESO AL SISTEMA';
+  if (is24Report) {
+    const section7Heading = document.createElement('h2');
+    section7Heading.className = 'section-heading';
+    section7Heading.textContent = '7.- PROYECCIÓN DE CONTINUIDAD Y ACCESO AL SISTEMA';
+    container.insertBefore(section7Heading, anchor);
+  }
 
   const ctaBanner = document.createElement('div');
   ctaBanner.className = 'closing-cta-banner';
-  ctaBanner.innerHTML = `
-    <div class="closing-cta-strong">SI EL ALGORITMO HA AJUSTADO ESA PROYECCIÓN DE FUTURO DE ALTÍSIMA PROBABILIDAD, QUE ALGUNOS LLAMARÁN DESTINO... IMAGINA LO QUE LOGRARÁS CON EL SISTEMA COMPLETO.</div>
-    <div class="closing-cta-normal">Si esto es lo que el algoritmo puede decodificar con una sola proyección, el límite lo pones tú.</div>
-    <div class="closing-cta-strong">“POR EL PRECIO DE UN CAFÉ A LA SEMANA, PASA A SER DE ESPECTADOR A ARQUITECTO DE TU VIDA”</div>
-    <div class="closing-cta-normal">Accede a la HOJA DE RUTA TOTAL del MÉTODO BÉNTURI:</div>
-  `;
+  if (is24Report) {
+    ctaBanner.innerHTML = `
+      <div class="closing-cta-strong">SI EL ALGORITMO HA AJUSTADO ESA PROYECCIÓN DE FUTURO DE ALTÍSIMA PROBABILIDAD, QUE ALGUNOS LLAMARÁN DESTINO... IMAGINA LO QUE LOGRARÁS CON EL SISTEMA COMPLETO.</div>
+      <div class="closing-cta-normal">Si esto es lo que el algoritmo puede decodificar con una sola proyección, el límite lo pones tú.</div>
+      <div class="closing-cta-strong">“POR EL PRECIO DE UN CAFÉ A LA SEMANA, PASA A SER DE ESPECTADOR A ARQUITECTO DE TU VIDA”</div>
+      <div class="closing-cta-normal">Accede a la HOJA DE RUTA TOTAL del MÉTODO BÉNTURI:</div>
+    `;
+  } else {
+    ctaBanner.innerHTML = `
+      <div class="closing-cta-strong">SI EL ALGORITMO HA AJUSTADO ESA PROYECCIÓN DE FUTURO DE ALTÍSIMA PROBABILIDAD, QUE ALGUNOS LLAMARÁN DESTINO... IMAGINA LO QUE LOGRARÁS CON EL SISTEMA COMPLETO.</div>
+      <div class="closing-cta-normal">Si esto es lo que el algoritmo puede decodificar con una sola proyección, el límite lo pones tú.</div>
+      <div class="closing-cta-normal">Por una inversión menor a un menú mensual, accede a la HOJA DE RUTA TOTAL del MÉTODO BÉNTURI:</div>
+    `;
+  }
+
+  const premiumSecondLine = is24Report
+    ? 'Tener ilimitadas proyecciones es perfecto PARA TRIANGULAR TIRADAS VECTORES -CARTAS'
+    : 'SON PERFECTAS PARA TRIANGULAR TIRADAS VECTORES -CARTAS';
 
   const plansTable = document.createElement('table');
   plansTable.className = 'plans-comparison-table';
@@ -591,7 +608,7 @@ function buildClosingSection(container) {
         </td>
         <td>
           <div class="plan-feature"><span class="plan-check">&#10003;</span> ILIMITADAS PROYECCIONES DE ALTA PROBABILIDAD DE FUTURO</div>
-          <div class="plan-feature"><span class="plan-check">&#10003;</span> Tener ilimitadas proyecciones es perfecto PARA TRIANGULAR TIRADAS VECTORES -CARTAS</div>
+          <div class="plan-feature"><span class="plan-check">&#10003;</span> ${premiumSecondLine}</div>
           <div class="plan-feature"><span class="plan-check">&#10003;</span> 1 PROYECCION PROFUNDA DE 24 CARTAS MENSUAL</div>
           <div class="plan-feature"><span class="plan-check">&#10003;</span> EVALUACIÓN DE TU ESTADO EN LA PIRÁMIDE DEL AMOR ,PARA SU ASCENSO Y VIBRAR EN LA ENERGIA ADECUADA,PARA TU ÉXITO</div>
         </td>
@@ -603,7 +620,6 @@ function buildClosingSection(container) {
   finalLuckBox.className = 'final-luck-box';
   finalLuckBox.textContent = '¡Mucha suerte! Aunque probablemente, con el Método Bénturi y por lo que cuesta un café a la semana... ¡ya no la necesites!';
 
-  container.insertBefore(section7Heading, anchor);
   container.insertBefore(ctaBanner, anchor);
   container.insertBefore(plansTable, anchor);
   container.insertBefore(finalLuckBox, anchor);
