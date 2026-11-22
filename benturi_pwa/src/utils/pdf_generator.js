@@ -628,6 +628,595 @@ function buildClosingSection(container) {
 }
 
 /**
+ * Construye el documento HTML5/CSS3 exclusivo para el Informe Oficial de 6 Vectores-Cartas,
+ * respetando la identidad visual (#0B192C, #C5A059, #FBF8F1, #1F2937, #4B5563, #FFFFFF)
+ * sin alterar ninguna palabra del texto y conservando únicamente el icono ✅ en la tabla de planes.
+ */
+function build6CardFullHTML(rawMarkdown, filename) {
+  let text = stripEmojis(rawMarkdown || '');
+  text = text.replace(/<\/?u>/gi, '');
+  text = text.replace(/^[ \t]*[¬_=]{3,}[ \t_\-=]*$/gm, '---');
+  text = text.replace(/^[ \t]*-{3,}[ \t]*$/gm, '---');
+
+  marked.setOptions({ breaks: true, gfm: true });
+  const parsedHtml = marked.parse(text);
+
+  const root = document.createElement('div');
+  root.innerHTML = parsedHtml;
+  root.querySelectorAll('hr').forEach(hr => hr.remove());
+
+  // 1. Extraer y estructurar la NOTA MUY IMPORTANTE DEL SISTEMA
+  const allInitial = Array.from(root.children);
+  const notaIdx = allInitial.findIndex(el => el.textContent.toUpperCase().includes('NOTA MUY IMPORTANTE DEL SISTEMA'));
+  let noticeHtml = `
+    <div class="b6-notice-box">
+      <div class="b6-notice-title">NOTA MUY IMPORTANTE DEL SISTEMA</div>
+      <p class="b6-notice-p">ESTA PLATAFORMA OFRECE ORIENTACIÓN PURA Y AUTOCONOCIMIENTO PROFUNDO, ¡PERO NO ES UN DIAGNÓSTICO NI PRONÓSTICO MÉDICO! SI TIENES CUALQUIER DUDA O PROBLEMA DE SALUD, ¡LA PRIORIDAD ABSOLUTA ES ACUDIR SIEMPRE A UN PROFESIONAL MÉDICO CUALIFICADO!</p>
+      <ul class="b6-notice-list">
+        <li><strong>RESPONSABILIDAD Y LIBRE ALBEDRÍO:</strong> EL MÉTODO BÉNTURI ES UNA POTENTE BRÚJULA PARA DESCODIFICAR ESA PROYECCIÓN DE FUTURO DE ALTISIMA PROBABILIDAD ,QUE ALGUNOS LLAMARÁN DESTINO. ¡PERO EL ÚNICO Y VERDADERO ARTÍFICE DE TU DESTINO ERES TÚ! TOMA ESTE SISTEMA COMO UN FARO DE AYUDA Y REFLEXIÓN, SABIENDO QUE EL TIMÓN, LA ACCIÓN Y LA ABSOLUTA RESPONSABILIDAD SOBRE TU VIDA SIEMPRE RECAEN EN TUS MANOS. ESE ES EL VERDADERO VALOR, ¡ANTICIPARSE! Y RECUERDA:</li>
+        <li><strong>SI LA PROYECCIÓN DE ALTÍSIMA PROBABILIDAD NO TE GUSTA... CAMBIÁLA CON EL PODER NÚMERO TRES!</strong> ¡NADA ESTÁ ESCRITO EN PIEDRA CUANDO TU VOLUNTAD ACTÚA! TOMA EL CONTROL ABSOLUTO, ACTIVA TU ENERGÍA Y TRANSFORMA TU DESTINO AHORA MISMO.</li>
+      </ul>
+    </div>
+  `;
+
+  if (notaIdx !== -1) {
+    let i = notaIdx;
+    const toRemove = [];
+    while (i < allInitial.length) {
+      const curr = allInitial[i];
+      const u = curr.textContent.trim().toUpperCase();
+      if (i > notaIdx && /^1\.\s*-/.test(u)) break;
+      toRemove.push(curr);
+      i++;
+    }
+    toRemove.forEach(n => n.remove());
+  }
+
+  // 2. Normalizar titulares 1.- a 6.- y bloques especiales
+  Array.from(root.children).forEach(el => {
+    const txt = el.textContent.trim();
+    const upper = txt.toUpperCase();
+
+    if (/^[1-6]\.\s*-\s*/.test(txt) && txt.length < 160) {
+      const h2 = document.createElement('h2');
+      h2.className = 'b6-section-title';
+      h2.textContent = txt.replace(/^[*_]+|[*_]+$/g, '');
+      el.replaceWith(h2);
+      return;
+    }
+
+    // Tarjetas individuales para cada una de las 6 cartas-vectores (Sección 2)
+    const vecMatch = txt.match(/^[*_\s]*((?:PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR(?:\s+DE\s+PROYECCI[ÓO]N)?\s*:\s*[^\n:]+)\s*:?\s*([\s\S]*)$/i);
+    if (vecMatch) {
+      const card = document.createElement('div');
+      card.className = 'b6-vector-card';
+      const head = document.createElement('div');
+      head.className = 'b6-vector-card-title';
+      head.textContent = vecMatch[1].replace(/[*_]/g, '').trim().toUpperCase();
+      card.appendChild(head);
+
+      const restText = (vecMatch[2] || '').trim();
+      if (restText) {
+        const body = document.createElement('div');
+        body.className = 'b6-vector-card-body';
+        body.textContent = restText.replace(/^[*_]+|[*_]+$/g, '');
+        card.appendChild(body);
+      } else if (el.nextElementSibling && el.nextElementSibling.tagName === 'P') {
+        const nextTxt = el.nextElementSibling.textContent.trim();
+        if (!/^[*_\s]*(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR/i.test(nextTxt) && !/^[1-6]\.\s*-/.test(nextTxt)) {
+          const body = document.createElement('div');
+          body.className = 'b6-vector-card-body';
+          body.innerHTML = el.nextElementSibling.innerHTML;
+          card.appendChild(body);
+          el.nextElementSibling.remove();
+        }
+      }
+      el.replaceWith(card);
+      return;
+    }
+
+    // Conclusión probabilística (Sección 4) en caja crema con borde doble dorado
+    if (/^[_*"«]*(Existe una probabilidad\s+(baja|media|alta|alt[íi]sima))/i.test(txt)) {
+      const box = document.createElement('div');
+      box.className = 'b6-projection-conclusion';
+      box.textContent = txt.replace(/^[_*]+|[_*]+$/g, '');
+      el.replaceWith(box);
+      return;
+    }
+
+    // Cita encuadrada "«Cuando compruebes que esta proyección..." o "“Acuérdate ,con el poder número tres..."
+    if (
+      upper.includes('CUANDO COMPRUEBES QUE ESTA PROYECCIÓN') ||
+      upper.includes('CUANDO COMPRUEBES QUE ESTA PROYECCION') ||
+      (upper.includes('ACUÉRDATE') && upper.includes('DECIDE') && upper.includes('CAMBIAR DE VÍA'))
+    ) {
+      const quote = document.createElement('div');
+      quote.className = 'b6-gold-quote';
+      quote.textContent = txt.replace(/^[_*]+|[_*]+$/g, '');
+      el.replaceWith(quote);
+      return;
+    }
+
+    // Subbloques de secciones 5 y 6 (5.1, 5.2, 1- PRIMER PODER, 2- SEGUNDO PODER, 3- TERCER PODER, Sinopsis)
+    if (/^(5\.[12]\s*-|[123]\s*-\s*(PRIMER|SEGUNDO|TERCER)\s+PODER|SINOPSIS\s*:)/i.test(txt)) {
+      const lines = el.innerHTML.split(/<br\s*\/?>/i);
+      const block = document.createElement('div');
+      block.className = 'b6-structured-block';
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'b6-structured-title';
+      titleDiv.textContent = lines[0].replace(/<[^>]+>|[*_]/g, '').trim();
+      block.appendChild(titleDiv);
+      if (lines.length > 1) {
+        const bodyDiv = document.createElement('div');
+        bodyDiv.className = 'b6-structured-body';
+        bodyDiv.innerHTML = lines.slice(1).join('<br>');
+        block.appendChild(bodyDiv);
+      }
+      el.replaceWith(block);
+      return;
+    }
+  });
+
+  // Si las 6 cartas vinieron en una tabla o lista UL, convertirlas en tarjetas individuales (.b6-vector-card)
+  root.querySelectorAll('table').forEach(tbl => {
+    const th = tbl.querySelector('th');
+    if (th && th.textContent.toUpperCase().includes('VECTOR')) {
+      const frag = document.createDocumentFragment();
+      tbl.querySelectorAll('tbody tr').forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        if (tds.length >= 2) {
+          const card = document.createElement('div');
+          card.className = 'b6-vector-card';
+          const head = document.createElement('div');
+          head.className = 'b6-vector-card-title';
+          head.textContent = tds[0].textContent.replace(/\[C\d+\]/gi, '').replace(/[*_]/g, '').trim().toUpperCase();
+          const body = document.createElement('div');
+          body.className = 'b6-vector-card-body';
+          body.innerHTML = tds[1].innerHTML;
+          card.appendChild(head);
+          card.appendChild(body);
+          frag.appendChild(card);
+        }
+      });
+      tbl.replaceWith(frag);
+    }
+  });
+
+  root.querySelectorAll('ul').forEach(ul => {
+    const lis = Array.from(ul.querySelectorAll('li'));
+    if (lis.length > 0 && lis.every(li => /(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA)\s+CARTA-VECTOR/i.test(li.textContent))) {
+      const frag = document.createDocumentFragment();
+      lis.forEach(li => {
+        const txt = li.textContent.trim();
+        const colonIdx = txt.indexOf(':');
+        const secondColon = colonIdx !== -1 ? txt.indexOf(':', colonIdx + 1) : -1;
+        const splitIdx = secondColon !== -1 ? secondColon : colonIdx;
+        const card = document.createElement('div');
+        card.className = 'b6-vector-card';
+        const head = document.createElement('div');
+        head.className = 'b6-vector-card-title';
+        const body = document.createElement('div');
+        body.className = 'b6-vector-card-body';
+        if (splitIdx !== -1) {
+          head.textContent = txt.slice(0, splitIdx).replace(/[*_]/g, '').trim().toUpperCase();
+          body.textContent = txt.slice(splitIdx + 1).trim();
+        } else {
+          head.textContent = txt.toUpperCase();
+        }
+        card.appendChild(head);
+        card.appendChild(body);
+        frag.appendChild(card);
+      });
+      ul.replaceWith(frag);
+    }
+  });
+
+  // 3. Estilizar la pregunta del consultante (justo debajo de 1.- PREGUNTA DEL CONSULTANTE) en caja Azul Marino (#0B192C) con borde dorado
+  const sec1 = Array.from(root.querySelectorAll('.b6-section-title')).find(h => /^1\.\s*-/.test(h.textContent));
+  if (sec1 && sec1.nextElementSibling && !sec1.nextElementSibling.classList.contains('b6-section-title')) {
+    const qEl = sec1.nextElementSibling;
+    const qBox = document.createElement('div');
+    qBox.className = 'b6-question-box';
+    qBox.textContent = qEl.textContent.replace(/^[*_]+|[*_]+$/g, '').trim().toUpperCase();
+    qEl.replaceWith(qBox);
+  }
+
+  // 4. Asegurar en Sección 4 que la caja de conclusión probabilística quede antes del CTA si ambos existen
+  const quoteBoxes = Array.from(root.querySelectorAll('.b6-gold-quote'));
+  const projBox = root.querySelector('.b6-projection-conclusion');
+  if (projBox && quoteBoxes.length > 0) {
+    const firstQuote = quoteBoxes[0];
+    if (firstQuote.compareDocumentPosition(projBox) & Node.DOCUMENT_POSITION_FOLLOWING) {
+      root.insertBefore(projBox, firstQuote);
+    }
+  }
+
+  // 5. Estructurar Bloque Final (Comparativa de Planes con exclusivamente el icono ✅)
+  const allAfter = Array.from(root.children);
+  const closeIdx = allAfter.findIndex(el => {
+    const u = el.textContent.toUpperCase();
+    return u.includes('SI EL ALGORITMO HA AJUSTADO ESA PROYECCIÓN') || u.includes('SI EL ALGORITMO HA AJUSTADO ESA PROYECCION');
+  });
+
+  if (closeIdx !== -1) {
+    const toRemove = allAfter.slice(closeIdx);
+    const anchor = toRemove[0];
+
+    const finalBlock = document.createElement('div');
+    finalBlock.className = 'b6-final-wrapper';
+    finalBlock.innerHTML = `
+      <div class="b6-cta-header">
+        <div class="b6-cta-title">SI EL ALGORITMO HA AJUSTADO ESA PROYECCIÓN DE FUTURO DE ALTÍSIMA PROBABILIDAD, QUE ALGUNOS LLAMARÁN DESTINO... IMAGINA LO QUE LOGRARÁS CON EL SISTEMA COMPLETO.</div>
+        <div class="b6-cta-sub">Si esto es lo que el algoritmo puede decodificar con una sola proyección, el límite lo pones tú.</div>
+        <div class="b6-cta-sub">Por una inversión menor a un menú mensual, accede a la HOJA DE RUTA TOTAL del MÉTODO BÉNTURI:</div>
+      </div>
+      <table class="b6-plans-table">
+        <thead>
+          <tr>
+            <th>BÉNTURI DESPEGUE</th>
+            <th>BÉNTURI PREMIUM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="b6-plan-item">✅ 12 PROYECCIONES DE ALTA PROBABILIDAD DE FUTURO MENSUALES.</div>
+              <div class="b6-plan-item">✅ 1 PROYECCION PROFUNDA DE 24 CARTAS MENSUAL</div>
+              <div class="b6-plan-item">✅ EVALUACIÓN DE TU ESTADO EN LA PIRÁMIDE DEL AMOR ,PARA SU ASCENSO Y VIBRAR EN LA ENERGIA ADECUADA,PARA TU ÉXITO</div>
+            </td>
+            <td>
+              <div class="b6-plan-item">✅ ILIMITADAS PROYECCIONES DE ALTA PROBABILIDAD DE FUTURO</div>
+              <div class="b6-plan-item">✅ SON PERFECTAS PARA TRIANGULAR TIRADAS VECTORES -CARTAS</div>
+              <div class="b6-plan-item">✅ 1 PROYECCION PROFUNDA DE 24 CARTAS MENSUAL</div>
+              <div class="b6-plan-item">✅ EVALUACIÓN DE TU ESTADO EN LA PIRÁMIDE DEL AMOR ,PARA SU ASCENSO Y VIBRAR EN LA ENERGIA ADECUADA,PARA TU ÉXITO</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="b6-luck-banner">
+        ¡Mucha suerte! Aunque probablemente, con el Método Bénturi y por lo que cuesta un café a la semana... ¡ya no la necesites!
+      </div>
+    `;
+    root.insertBefore(finalBlock, anchor);
+    toRemove.forEach(n => n.remove());
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${filename || 'Informe Oficial de Proyección · 6 Vectores-Cartas'}</title>
+      <style>
+        @page {
+          size: A4 vertical;
+          margin: 16mm 15mm 16mm 15mm;
+        }
+        * {
+          box-sizing: border-box;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body {
+          font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+          background-color: #FFFFFF;
+          color: #1F2937;
+          font-size: 10.2pt;
+          line-height: 1.55;
+          margin: 0;
+          padding: 0;
+        }
+        p {
+          margin: 0 0 10px 0;
+          color: #1F2937;
+          text-align: justify;
+        }
+        strong, b {
+          color: #0B192C;
+          font-weight: 700;
+        }
+        em strong, strong em, b i, i b {
+          color: #0B192C;
+          font-weight: 700;
+          font-style: italic;
+        }
+
+        /* 1. CABECERA SUPERIOR CORPORATIVA */
+        .b6-corporate-top {
+          background-color: #FFFFFF;
+          text-align: center;
+          padding: 6px 0 12px 0;
+        }
+        .b6-logo-mark {
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 20pt;
+          font-weight: 700;
+          color: #0B192C;
+          letter-spacing: 0.5px;
+        }
+        .b6-logo-mark span {
+          color: #C5A059;
+          margin-right: 6px;
+        }
+        .b6-header-band {
+          background-color: #0B192C;
+          border-bottom: 4px double #C5A059;
+          padding: 12px 18px;
+          text-align: center;
+          margin-bottom: 14px;
+        }
+        .b6-header-band-title {
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 11.5pt;
+          font-weight: 700;
+          color: #FFFFFF;
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+        }
+        .b6-header-band-title span {
+          color: #C5A059;
+        }
+
+        /* AVISO LEGAL */
+        .b6-notice-box {
+          background-color: #FBF8F1;
+          border: 1px solid #E5DEC9;
+          border-left: 4px solid #C5A059;
+          padding: 12px 16px;
+          margin-bottom: 18px;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .b6-notice-title {
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 9.8pt;
+          font-weight: 700;
+          color: #0B192C;
+          text-transform: uppercase;
+          margin-bottom: 6px;
+          letter-spacing: 0.4px;
+        }
+        .b6-notice-p {
+          font-size: 8.6pt;
+          color: #4B5563;
+          line-height: 1.42;
+          margin-bottom: 6px;
+          text-align: justify;
+        }
+        .b6-notice-list {
+          margin: 0;
+          padding-left: 16px;
+        }
+        .b6-notice-list li {
+          font-size: 8.6pt;
+          color: #4B5563;
+          line-height: 1.42;
+          margin-bottom: 4px;
+          text-align: justify;
+        }
+        .b6-notice-list li strong {
+          color: #0B192C;
+        }
+
+        /* TITULARES DE SECCIÓN (1.- a 6.-) */
+        .b6-section-title {
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 11.8pt;
+          font-weight: 700;
+          color: #0B192C;
+          text-transform: uppercase;
+          border-bottom: 2px solid #C5A059;
+          padding-bottom: 5px;
+          margin: 20px 0 12px 0;
+          letter-spacing: 0.3px;
+          page-break-after: avoid;
+        }
+
+        /* 2. SECCIÓN 1 · CAJA DE PREGUNTA DEL CONSULTANTE */
+        .b6-question-box {
+          background-color: #0B192C;
+          border: 1.5px solid #C5A059;
+          border-radius: 6px;
+          padding: 14px 20px;
+          margin: 10px 0 18px 0;
+          color: #FFFFFF;
+          font-weight: 700;
+          font-size: 11pt;
+          text-align: center;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        /* 3. SECCIÓN 2 · TARJETAS INDIVIDUALES DE CADA VECTOR-CARTA (1 A 6) */
+        .b6-vector-card {
+          background-color: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-left: 4px solid #C5A059;
+          border-radius: 4px;
+          padding: 12px 16px;
+          margin-bottom: 12px;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .b6-vector-card-title {
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 10pt;
+          font-weight: 700;
+          color: #0B192C;
+          text-transform: uppercase;
+          margin-bottom: 6px;
+          letter-spacing: 0.2px;
+        }
+        .b6-vector-card-body {
+          font-size: 9.8pt;
+          color: #1F2937;
+          line-height: 1.52;
+          text-align: justify;
+        }
+
+        /* 5. SECCIÓN 4 · PROYECCIÓN DE ALTA PROBABILIDAD Y CITA */
+        .b6-projection-conclusion {
+          background-color: #FBF8F1;
+          border: 3px double #C5A059;
+          box-shadow: 0 2px 6px rgba(11, 25, 44, 0.06);
+          padding: 14px 18px;
+          margin: 14px 0;
+          color: #0B192C;
+          font-weight: 700;
+          font-style: italic;
+          font-size: 10.2pt;
+          line-height: 1.52;
+          text-align: justify;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .b6-gold-quote, blockquote {
+          background-color: #FBF8F1;
+          border-top: 1.5px solid #C5A059;
+          border-bottom: 1.5px solid #C5A059;
+          border-left: none;
+          border-right: none;
+          padding: 12px 18px;
+          margin: 14px 0;
+          color: #0B192C;
+          font-style: italic;
+          font-weight: 600;
+          font-size: 9.8pt;
+          line-height: 1.5;
+          text-align: center;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        /* 6. SECCIONES 5 Y 6 · BLOQUES ESTRUCTURADOS */
+        .b6-structured-block {
+          background-color: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-left: 3px solid #C5A059;
+          padding: 11px 15px;
+          margin: 10px 0;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .b6-structured-title {
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 9.8pt;
+          font-weight: 700;
+          color: #0B192C;
+          border-bottom: 1px solid #C5A059;
+          padding-bottom: 4px;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+        }
+        .b6-structured-body {
+          font-size: 9.6pt;
+          color: #1F2937;
+          line-height: 1.5;
+          text-align: justify;
+        }
+
+        /* 7. BLOQUE FINAL · COMPARATIVA DE PLANES */
+        .b6-final-wrapper {
+          margin-top: 22px;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .b6-cta-header {
+          background-color: #0B192C;
+          border-top: 2px solid #C5A059;
+          border-bottom: 2px solid #C5A059;
+          color: #FFFFFF;
+          padding: 14px 18px;
+          margin-bottom: 14px;
+          text-align: center;
+        }
+        .b6-cta-title {
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 10pt;
+          font-weight: 700;
+          color: #C5A059;
+          margin-bottom: 6px;
+          line-height: 1.45;
+        }
+        .b6-cta-sub {
+          font-size: 9.2pt;
+          color: #FFFFFF;
+          margin-bottom: 4px;
+        }
+        .b6-plans-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 14px;
+          table-layout: fixed;
+        }
+        .b6-plans-table th {
+          width: 50%;
+          background-color: #0B192C;
+          color: #C5A059;
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 10.2pt;
+          font-weight: 700;
+          text-align: center;
+          padding: 10px 14px;
+          border: 1px solid #0B192C;
+          border-bottom: 2px solid #C5A059;
+          text-transform: uppercase;
+        }
+        .b6-plans-table td {
+          width: 50%;
+          vertical-align: top;
+          background-color: #FFFFFF;
+          border: 1px solid #D1D5DB;
+          padding: 12px 14px;
+        }
+        .b6-plan-item {
+          font-size: 9pt;
+          color: #1F2937;
+          line-height: 1.45;
+          margin-bottom: 8px;
+        }
+        .b6-plan-item:last-child {
+          margin-bottom: 0;
+        }
+        .b6-luck-banner {
+          background-color: #FBF8F1;
+          border: 1px solid #C5A059;
+          padding: 12px 16px;
+          text-align: center;
+          font-family: Georgia, 'Playfair Display', serif;
+          font-size: 9.8pt;
+          font-weight: 700;
+          color: #0B192C;
+        }
+        .b6-footer {
+          margin-top: 18px;
+          padding-top: 8px;
+          border-top: 1px solid #E5E7EB;
+          text-align: center;
+          font-size: 8.2pt;
+          color: #4B5563;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="b6-corporate-top">
+        <div class="b6-logo-mark"><span>MB</span>MétodoBénturi</div>
+      </div>
+      <div class="b6-header-band">
+        <div class="b6-header-band-title">INFORME OFICIAL DE PROYECCIÓN DE ALTA PROBABILIDAD <span>· 6 VECTORES-CARTAS</span></div>
+      </div>
+      ${noticeHtml}
+      ${root.innerHTML}
+      <div class="b6-footer">Método Bénturi · Informe Oficial de Proyección</div>
+    </body>
+    </html>
+  `;
+}
+
+/**
  * Convierte el Markdown retornado por el LLM y utiliza el diálogo de impresión
  * nativo del dispositivo para generar el PDF con el diseño oficial de
  * "Informe de Proyección Determinista - Método Bénturi".
@@ -636,6 +1225,51 @@ function buildClosingSection(container) {
  */
 export async function generarPDFDesdeMarkdown(markdownText, filename = null) {
   console.log("Abriendo diálogo nativo para generar PDF determinista...");
+
+  const upperRaw = String(markdownText || '').toUpperCase();
+  const is24Report =
+    upperRaw.includes('24 VECTORES') ||
+    upperRaw.includes('322 BILLONES') ||
+    upperRaw.includes('CRÓNICA EVOLUTIVA') ||
+    upperRaw.includes('FILA 1:');
+
+  // Si es el informe de 6 cartas, usar su maquetación editorial específica sin tocar el de 24
+  if (!is24Report) {
+    const html6 = build6CardFullHTML(markdownText, filename);
+    const iframe6 = document.createElement('iframe');
+    iframe6.style.position = 'fixed';
+    iframe6.style.right = '100%';
+    iframe6.style.bottom = '100%';
+    iframe6.style.width = '100vw';
+    iframe6.style.height = '100vh';
+    iframe6.style.border = 'none';
+    iframe6.style.opacity = '0';
+    document.body.appendChild(iframe6);
+
+    const doc6 = iframe6.contentWindow.document;
+    doc6.open();
+    doc6.write(html6);
+    doc6.close();
+
+    iframe6.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe6.contentWindow.focus();
+          iframe6.contentWindow.print();
+        } catch (e) {
+          console.error("Error al intentar abrir el diálogo de impresión:", e);
+          alert("Tu dispositivo ha bloqueado la generación del PDF. Intenta hacerlo manualmente.");
+        } finally {
+          setTimeout(() => {
+            if (document.body.contains(iframe6)) {
+              document.body.removeChild(iframe6);
+            }
+          }, 30000);
+        }
+      }, 250);
+    };
+    return;
+  }
 
   marked.setOptions({
     breaks: true,
