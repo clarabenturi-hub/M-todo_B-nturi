@@ -1,4 +1,15 @@
-import { precacheAndRoute } from 'workbox-precaching';
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+
+// Forzar activación inmediata del nuevo Service Worker tras cada despliegue en Render
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+cleanupOutdatedCaches();
 
 // Precarga los assets que vite-plugin-pwa inyecte
 precacheAndRoute(self.__WB_MANIFEST || []);
