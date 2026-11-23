@@ -184,7 +184,7 @@ export default function Fase1Screen() {
         <div className="mt-16">
           <iframe 
             style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black'}} 
-            src="https://www.youtube.com/embed/bXrP8KxyivQ?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
+            src="https://www.youtube.com/embed/JMFfrap6sk4?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
             title="Vídeo Fase 1" 
             frameBorder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
