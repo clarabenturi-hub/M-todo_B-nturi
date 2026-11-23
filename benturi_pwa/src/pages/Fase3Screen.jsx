@@ -79,16 +79,14 @@ export default function Fase3Screen() {
         <h1>{t('fase3','titulo','FASE 3: DECIDE')}</h1>
         <div className="subtitle mt-8">{t('fase3','subtitulo','OBJETIVIDAD RADICAL')}</div>
         <div className="mt-16">
-          <div style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', overflow: 'hidden', position: 'relative', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black'}}>
-            <iframe 
-              style={{position: 'absolute', top: 0, left: '50%', width: '316.5%', height: '100%', transform: 'translateX(-50%)'}} 
-              src="https://www.youtube.com/embed/BAAgfa3YpQM?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
-              title="Vídeo Fase 3" 
-              frameBorder="0" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowFullScreen>
-            </iframe>
-          </div>
+          <iframe 
+            style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black'}} 
+            src="https://www.youtube.com/embed/zPNb18SMVoo?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
+            title="Vídeo Fase 3" 
+            frameBorder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            allowFullScreen>
+          </iframe>
         </div>
       </div>
 
