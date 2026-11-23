@@ -73,27 +73,15 @@ export default function HomeScreen({ onNavigateTo6Cartas, user, onLoginClick, on
         <h1 className="shimmer-title">{t('dashboard','titulo_principal','MÉTODO BÉNTURI')}</h1>
         <div className="subtitle mt-8">{t('dashboard','subtitulo_principal','Antes de que vayáis a la tirada gratuita, es muy importante que veáis estos dos vídeos. Ahora nos vemos')}</div>
         
-        <div className="stack mt-16">
-          <div>
-            <iframe 
-              style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black', display: 'block'}} 
-              src="https://www.youtube.com/embed/WbuCBy1jHkg?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
-              title="¿Qué es el Método Bénturi?" 
-              frameBorder="0" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowFullScreen>
-            </iframe>
-          </div>
-          <div>
-            <iframe 
-              style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black', display: 'block'}} 
-              src="https://www.youtube.com/embed/HOUl-W2wBik?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
-              title="Vídeo 2" 
-              frameBorder="0" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowFullScreen>
-            </iframe>
-          </div>
+        <div className="mt-16">
+          <iframe 
+            style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black', display: 'block'}} 
+            src="https://www.youtube.com/embed/WbuCBy1jHkg?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
+            title="¿Qué es el Método Bénturi?" 
+            frameBorder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            allowFullScreen>
+          </iframe>
         </div>
       </div>
 

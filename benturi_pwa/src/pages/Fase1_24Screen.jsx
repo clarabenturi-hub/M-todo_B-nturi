@@ -404,9 +404,14 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
           </div>
           <div className="mt-16">
             <iframe 
-              style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black'}} 
-              src="https://www.youtube.com/embed/ajwxQOCGjPc?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
-              title="Vídeo Tirada 24 Cartas" 
+              key={done ? 'video-24-cartas' : 'video-ama'}
+              style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black', display: 'block'}} 
+              src={
+                done
+                  ? "https://www.youtube.com/embed/ajwxQOCGjPc?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3"
+                  : "https://www.youtube.com/embed/vCMGqr6WRKs?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3"
+              }
+              title={done ? "Vídeo Tirada 24 Cartas" : "Vídeo Pirámide del Amor (Ama)"}
               frameBorder="0" 
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
               allowFullScreen>
