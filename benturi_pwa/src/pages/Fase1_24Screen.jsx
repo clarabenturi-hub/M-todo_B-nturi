@@ -402,6 +402,16 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
           <div className="subtitle mt-8" style={{ fontSize: 'clamp(11px, 2.9vw, 13px)', lineHeight: '1.45', opacity: 0.9, textTransform: 'none' }}>
             El Algoritmo decodifica 32,2 billones de opciones cruzando tu estado vibracional con la red probabilística.
           </div>
+          <div className="mt-16">
+            <iframe 
+              style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black'}} 
+              src="https://www.youtube.com/embed/ajwxQOCGjPc?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
+              title="Vídeo Tirada 24 Cartas" 
+              frameBorder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              allowFullScreen>
+            </iframe>
+          </div>
         </div>
 
         {/* STEPPER DE NAVEGACIÓN UX/UI */}
