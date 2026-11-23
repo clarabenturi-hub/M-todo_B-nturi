@@ -76,7 +76,7 @@ export default function HomeScreen({ onNavigateTo6Cartas, user, onLoginClick, on
         <div className="stack mt-16">
           <iframe 
             style={{width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: '1.5px solid rgba(127,179,213,0.4)', background: 'black'}} 
-            src="https://www.youtube.com/embed/HfVT6ORACqQ?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
+            src="https://www.youtube.com/embed/mMiN3pjxjCo?rel=0&modestbranding=1&controls=0&vq=hd1080&iv_load_policy=3" 
             title="Vídeo 1" 
             frameBorder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
