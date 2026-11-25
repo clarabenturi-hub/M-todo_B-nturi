@@ -7,6 +7,7 @@ import { useTexts } from './hooks/useTexts'
 import { playBeep } from './utils/audio'
 
 import AuthModal from './components/AuthModal'
+import LegalFooter from './components/LegalFooter'
 import HomeScreen from './pages/HomeScreen'
 import Fase1Screen from './pages/Fase1Screen'
 import Fase1_24Screen from './pages/Fase1_24Screen'
@@ -170,6 +171,8 @@ export default function App() {
           {screens[tab]}
         </motion.div>
       </AnimatePresence>
+
+      <LegalFooter />
 
       <nav className="bottom-nav" aria-label="Navegación principal">
         {navItems.map((item) => (

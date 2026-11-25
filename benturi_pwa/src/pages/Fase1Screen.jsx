@@ -57,6 +57,7 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
   const [showApuestasDialog, setShowApuestasDialog] = useState(false)
   const [showProcedimientoDialog, setShowProcedimientoDialog] = useState(false)
   const [showVentajaPopup, setShowVentajaPopup] = useState(false)
+  const [acceptedLegal, setAcceptedLegal] = useState(false)
 
   // Control de ocultación del botón de descarga y desbloqueo a las 72 horas
   const [tiradaTimestamp, setTiradaTimestamp] = useState(() => {
@@ -245,6 +246,10 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
       alert(t('fase1','alerta_variable_vacia','El Algoritmo requiere una Variable de Consulta válida.'))
       return
     }
+    if (!acceptedLegal) {
+      alert('Debes aceptar el Aviso Legal, la Exención de Responsabilidad y las Condiciones de Uso antes de iniciar la proyección.')
+      return
+    }
 
     const filled = [...selectedCards]
     const remaining = FULL_DECK.filter(c => !filled.some(s => s?.id === c.id))
@@ -400,11 +405,107 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
         </div>
       </div>
 
+      {/* Checkbox obligatorio previo a la tirada gratuita */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '14px 18px',
+          borderRadius: '12px',
+          border: acceptedLegal ? '1.5px solid rgba(0, 229, 255, 0.55)' : '1px solid rgba(217, 70, 239, 0.38)',
+          background: acceptedLegal ? 'rgba(0, 229, 255, 0.07)' : 'rgba(15, 23, 42, 0.72)',
+          transition: 'all 0.25s ease'
+        }}
+      >
+        <label
+          htmlFor="checkbox-legal-tirada6"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+        >
+          <input
+            id="checkbox-legal-tirada6"
+            type="checkbox"
+            checked={acceptedLegal}
+            onChange={e => setAcceptedLegal(e.target.checked)}
+            style={{
+              width: '20px',
+              height: '20px',
+              marginTop: '2px',
+              accentColor: '#00E5FF',
+              flexShrink: 0,
+              cursor: 'pointer'
+            }}
+          />
+          <span
+            style={{
+              fontSize: '12.5px',
+              lineHeight: '1.5',
+              color: '#e2e8f0',
+              fontFamily: "'Inter', sans-serif"
+            }}
+          >
+            He leído y acepto el{' '}
+            <span
+              role="link"
+              aria-disabled="true"
+              style={{
+                color: 'rgba(164, 235, 243, 0.6)',
+                textDecoration: 'underline',
+                cursor: 'not-allowed'
+              }}
+            >
+              Aviso Legal
+            </span>
+            , la{' '}
+            <span
+              role="link"
+              aria-disabled="true"
+              style={{
+                color: 'rgba(164, 235, 243, 0.6)',
+                textDecoration: 'underline',
+                cursor: 'not-allowed'
+              }}
+            >
+              Exención de Responsabilidad
+            </span>
+            , las{' '}
+            <span
+              role="link"
+              aria-disabled="true"
+              style={{
+                color: 'rgba(164, 235, 243, 0.6)',
+                textDecoration: 'underline',
+                cursor: 'not-allowed'
+              }}
+            >
+              Condiciones de Uso
+            </span>{' '}
+            y la{' '}
+            <span
+              role="link"
+              aria-disabled="true"
+              style={{
+                color: 'rgba(164, 235, 243, 0.6)',
+                textDecoration: 'underline',
+                cursor: 'not-allowed'
+              }}
+            >
+              Política de Privacidad
+            </span>
+            . Comprendo que esta proyección de 6 vectores es orientativa, no sustituye consejo médico, legal o financiero profesional, y que soy el único responsable de mis decisiones.
+          </span>
+        </label>
+      </div>
+
       <button
         className="btn-primary"
         id="btn-colapsar-onda"
         onClick={handleProject}
-        disabled={!question.trim()}
+        disabled={!question.trim() || !acceptedLegal}
       >
         {t('fase1','btn_colapsar_onda','Iniciar proyección de futuro de alta probabilidad')}
       </button>
@@ -476,7 +577,7 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
               Con respecto a tu consulta sobre: <strong style={{color: 'var(--blue-accent)'}}>"{result.question}"</strong>
             </p>
             
-            <div className="glass-card-light custom-scroll-container report-content-markdown" style={{padding: '16px', marginBottom: '16px', maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6'}}>
+            <div className="glass-card-light custom-scroll-container report-content-markdown" style={{padding: '16px', marginBottom: '10px', maxHeight: '46vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6'}}>
               {streamError ? (
                 <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
               ) : (
@@ -490,6 +591,25 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
                   {isStreaming && <span className="cursor-blink" style={{marginLeft: '4px'}}>|</span>}
                 </>
               )}
+            </div>
+
+            {/* Pie de pantalla constante en los informes de 6 cartas */}
+            <div
+              id="report-6-constant-legal-footer"
+              style={{
+                padding: '10px 12px',
+                borderRadius: '8px',
+                background: 'rgba(2, 6, 23, 0.88)',
+                border: '1px solid rgba(0, 229, 255, 0.28)',
+                borderLeft: '3px solid #D946EF',
+                fontSize: '11px',
+                lineHeight: '1.45',
+                color: 'rgba(226, 232, 240, 0.85)',
+                textAlign: 'left',
+                marginBottom: '8px'
+              }}
+            >
+              <strong style={{ color: '#00E5FF' }}>⚖️ AVISO LEGAL Y EXENCIÓN DE RESPONSABILIDAD:</strong> Este informe de 6 vectores ofrece orientación probabilística y autoconocimiento; no constituye diagnóstico médico, psicológico, jurídico ni financiero. El usuario mantiene siempre su libre albedrío y la responsabilidad exclusiva sobre sus decisiones.
             </div>
             
             {!isStreaming && !streamError && !hideDownloadBtn && (

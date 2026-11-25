@@ -1193,11 +1193,16 @@ function build6CardFullHTML(rawMarkdown, filename) {
         }
         .b6-footer {
           margin-top: 18px;
-          padding-top: 8px;
-          border-top: 1px solid #E5E7EB;
+          padding: 10px 14px;
+          background-color: #FBF8F1;
+          border-top: 2px solid #C5A059;
+          border-bottom: 1px solid #E5DEC9;
           text-align: center;
-          font-size: 8.2pt;
-          color: #4B5563;
+          font-size: 7.8pt;
+          line-height: 1.45;
+          color: #1F2937;
+          break-inside: avoid;
+          page-break-inside: avoid;
         }
       </style>
     </head>
@@ -1210,7 +1215,9 @@ function build6CardFullHTML(rawMarkdown, filename) {
       </div>
       ${noticeHtml}
       ${root.innerHTML}
-      <div class="b6-footer">Método Bénturi · Informe Oficial de Proyección</div>
+      <div class="b6-footer">
+        <strong>AVISO LEGAL Y EXENCIÓN DE RESPONSABILIDAD · MÉTODO BÉNTURI:</strong> Este informe de 6 vectores tiene carácter estrictamente orientativo, informativo y de autoconocimiento. En ningún caso sustituye el diagnóstico, asesoramiento o tratamiento de profesionales médicos, psicológicos, legales o financieros cualificados. El usuario reconoce su libre albedrío y asume la responsabilidad exclusiva sobre sus decisiones y acciones.
+      </div>
     </body>
     </html>
   `;
