@@ -299,18 +299,19 @@ setInterval(() => {
 // --- REDSYS ENDPOINTS ---
 
 app.post('/api/create-payment', authenticateToken, (req, res) => {
-    // 1. Generar un OrderID único (Redsys requiere que los primeros 4 dígitos sean números y en total máx 12)
-    // Para simplificar: Fecha compactada + ID usuario
-    const dateStr = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(2, 10); // formato YYMMDDHH
-    const orderId = `${dateStr}${req.user.id}`.padEnd(10, '0').slice(0, 12);
+    // 1. Generar un OrderID único para Redsys (primeros 8 dígitos temporales MMDDHHmm + ID de usuario, sin ceros al final que alteren el ID)
+    const timePrefix = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(4, 12); // 8 dígitos numéricos (MMDDHHmm)
+    const orderId = `${timePrefix}${req.user.id}`.slice(0, 12);
     
-    const plan = req.body?.plan || 'despegue';
-    const amount = plan === 'premium' ? 1295 : 995; // 12,95 € (Premium) o 9,95 € (Despegue)
+    // Plan único activo: Bénturi Premium (12,95 €)
+    const amount = 1295;
     
-    // IMPORTANTE: En desarrollo local (localhost), Redsys NO puede alcanzar tu Webhook.
-    // Usarías ngrok para exponer tu localhost.
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+    // Detectar automáticamente el dominio en producción (Render) si no están definidas BASE_URL / FRONTEND_URL
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.get('host') || 'localhost:3000';
+    const requestOrigin = `${proto}://${host}`;
+    const baseUrl = process.env.BASE_URL || requestOrigin;
+    const frontendUrl = process.env.FRONTEND_URL || requestOrigin;
 
     const merchantUrl = `${baseUrl}/api/redsys-webhook`;
     const urlOK = `${frontendUrl}/?pago=ok`;

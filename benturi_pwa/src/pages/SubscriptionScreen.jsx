@@ -3,15 +3,15 @@ import { useTexts } from '../hooks/useTexts'
 
 export default function SubscriptionScreen({ user, token, onLoginClick, onBack }) {
   const { t } = useTexts()
-  const [loadingPlan, setLoadingPlan] = useState(null)
+  const [loading, setLoading] = useState(false)
 
-  const handleSubscribe = async (planKey) => {
+  const handleSubscribe = async () => {
     if (!user || !token) {
       onLoginClick()
       return
     }
 
-    setLoadingPlan(planKey)
+    setLoading(true)
     try {
       const res = await fetch('/api/create-payment', {
         method: 'POST',
@@ -19,7 +19,7 @@ export default function SubscriptionScreen({ user, token, onLoginClick, onBack }
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ plan: planKey })
+        body: JSON.stringify({ plan: 'premium' })
       })
 
       const data = await res.json()
@@ -40,12 +40,12 @@ export default function SubscriptionScreen({ user, token, onLoginClick, onBack }
         form.submit()
       } else {
         alert('Error al generar la solicitud de pago en el servidor.')
-        setLoadingPlan(null)
+        setLoading(false)
       }
     } catch (err) {
       console.error(err)
       alert('Error de conexión con la pasarela de pago.')
-      setLoadingPlan(null)
+      setLoading(false)
     }
   }
 
@@ -63,52 +63,10 @@ export default function SubscriptionScreen({ user, token, onLoginClick, onBack }
         </div>
       </div>
 
-      {/* PLAN 1: BÉNTURI DESPEGUE */}
-      <div className="paywall-card" style={{ border: '1.5px solid rgba(127, 179, 213, 0.45)' }}>
-        <div className="paywall-badge">PLAN MENSUAL</div>
-        <h2 style={{ textAlign: 'center', color: '#ffffff', marginTop: '8px' }}>BÉNTURI DESPEGUE</h2>
-        <div className="paywall-price mt-12">9,95 €</div>
-        <div className="paywall-freq">/ mes</div>
-
-        <div className="stack mt-16" style={{ gap: '12px', textAlign: 'left' }}>
-          <div className="paywall-benefit">
-            <span className="paywall-benefit-icon">✅</span>
-            <div>
-              <div className="paywall-benefit-title">12 PROYECCIONES DE ALTA PROBABILIDAD DE FUTURO MENSUALES</div>
-              <p>Acceso a tiradas de 6 vectores-cartas para tus decisiones clave del mes.</p>
-            </div>
-          </div>
-          <div className="paywall-benefit">
-            <span className="paywall-benefit-icon">✅</span>
-            <div>
-              <div className="paywall-benefit-title">1 PROYECCIÓN PROFUNDA DE 24 CARTAS MENSUAL</div>
-              <p>Decodificación completa de la matriz 4x6 (Pasado, Presente y Futuro).</p>
-            </div>
-          </div>
-          <div className="paywall-benefit">
-            <span className="paywall-benefit-icon">✅</span>
-            <div>
-              <div className="paywall-benefit-title">EVALUACIÓN EN LA PIRÁMIDE DEL AMOR</div>
-              <p>Diagnóstico vibracional para tu ascenso y sintonización en la energía adecuada para tu éxito.</p>
-            </div>
-          </div>
-        </div>
-
-        <button
-          className="btn-primary mt-24"
-          id="btn-suscribir-despegue"
-          style={{ width: '100%' }}
-          onClick={() => handleSubscribe('despegue')}
-          disabled={loadingPlan !== null}
-        >
-          {loadingPlan === 'despegue' ? 'CONECTANDO CON BANCO (REDSYS)...' : 'SUSCRIBIRME A BÉNTURI DESPEGUE (9,95 €)'}
-        </button>
-      </div>
-
-      {/* PLAN 2: BÉNTURI PREMIUM */}
+      {/* PLAN ÚNICO: BÉNTURI PREMIUM */}
       <div className="paywall-card" style={{ border: '2px solid #d946ef', boxShadow: '0 0 28px rgba(217, 70, 239, 0.25)' }}>
         <div className="paywall-badge" style={{ background: 'linear-gradient(90deg, #d946ef, #00e5ff)', color: '#fff', fontWeight: '800' }}>
-          RECOMENDADO · ACCESO ILIMITADO
+          ACCESO ILIMITADO
         </div>
         <h2 style={{ textAlign: 'center', color: '#ffffff', marginTop: '8px' }}>BÉNTURI PREMIUM</h2>
         <div className="paywall-price mt-12">12,95 €</div>
@@ -142,10 +100,10 @@ export default function SubscriptionScreen({ user, token, onLoginClick, onBack }
           className="btn-dark mt-24 glass-btn"
           id="btn-suscribir-premium"
           style={{ width: '100%', background: 'linear-gradient(135deg, #d946ef, #7c3aed)', color: '#fff', border: 'none', fontWeight: '800' }}
-          onClick={() => handleSubscribe('premium')}
-          disabled={loadingPlan !== null}
+          onClick={handleSubscribe}
+          disabled={loading}
         >
-          {loadingPlan === 'premium' ? 'CONECTANDO CON BANCO (REDSYS)...' : 'SUSCRIBIRME A BÉNTURI PREMIUM (12,95 €)'}
+          {loading ? 'CONECTANDO CON BANCO (REDSYS)...' : 'SUSCRIBIRME A BÉNTURI PREMIUM (12,95 €)'}
         </button>
 
         <div className="paywall-legal mt-12">
