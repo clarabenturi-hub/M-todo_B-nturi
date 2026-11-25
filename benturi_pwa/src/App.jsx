@@ -31,6 +31,41 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
+  // Control de desbloqueo de pestañas 24 CARTAS y DECIDE a las 72 horas de la tirada de 6
+  const [tiradaTimestamp, setTiradaTimestamp] = useState(() => {
+    const saved = localStorage.getItem('benturi_tirada6_timestamp')
+    return saved ? Number(saved) : null
+  })
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    const syncTiradaTimestamp = () => {
+      const saved = localStorage.getItem('benturi_tirada6_timestamp')
+      setTiradaTimestamp(saved ? Number(saved) : null)
+      setNowMs(Date.now())
+    }
+    window.addEventListener('benturi-tirada6-updated', syncTiradaTimestamp)
+    window.addEventListener('storage', syncTiradaTimestamp)
+    const timer = setInterval(() => setNowMs(Date.now()), 15000)
+    return () => {
+      window.removeEventListener('benturi-tirada6-updated', syncTiradaTimestamp)
+      window.removeEventListener('storage', syncTiradaTimestamp)
+      clearInterval(timer)
+    }
+  }, [])
+
+  // Abrir pestaña 6 CARTAS si viene desde la notificación push (?tab=6cartas)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('tab') === '6cartas') {
+      setTab(1)
+    }
+  }, [])
+
+  const isTest72h = typeof window !== 'undefined' && window.location.search.includes('test72h=1')
+  const is72hElapsed = isTest72h || (tiradaTimestamp !== null && (nowMs - tiradaTimestamp >= 72 * 60 * 60 * 1000))
+  const canSeeAdvancedTabs = Boolean(user?.isPremium || user?.role === 'admin' || is72hElapsed)
+
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -91,12 +126,12 @@ export default function App() {
     setUser(null)
   }
 
-  const navLabels = [
-    t('navegacion','tab_1','INICIO'),
-    t('navegacion','tab_2','6 CARTAS'),
-    t('navegacion','tab_3','24 CARTAS'),
-    t('navegacion','tab_5','DECIDE'),
-  ]
+  const navItems = [
+    { index: 0, label: t('navegacion','tab_1','INICIO'), icon: NAV_ICONS[0], visible: true },
+    { index: 1, label: t('navegacion','tab_2','6 CARTAS'), icon: NAV_ICONS[1], visible: true },
+    { index: 2, label: t('navegacion','tab_3','24 CARTAS'), icon: NAV_ICONS[2], visible: canSeeAdvancedTabs },
+    { index: 3, label: t('navegacion','tab_5','DECIDE'), icon: NAV_ICONS[3], visible: canSeeAdvancedTabs },
+  ].filter(item => item.visible)
 
   const screens = [
     <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(4)} />,
@@ -137,19 +172,19 @@ export default function App() {
       </AnimatePresence>
 
       <nav className="bottom-nav" aria-label="Navegación principal">
-        {navLabels.map((label, i) => (
+        {navItems.map((item) => (
           <button
-            key={i}
-            id={`nav-tab-${i}`}
-            className={`nav-item${tab === i ? ' active' : ''}`}
+            key={item.index}
+            id={`nav-tab-${item.index}`}
+            className={`nav-item${tab === item.index ? ' active' : ''}`}
             onClick={() => {
-              playBeep(400 + i * 50, 'sine', 100);
-              setTab(i);
+              playBeep(400 + item.index * 50, 'sine', 100);
+              setTab(item.index);
             }}
-            aria-label={label}
+            aria-label={item.label}
           >
-            <span className="nav-icon">{NAV_ICONS[i]}</span>
-            {label}
+            <span className="nav-icon">{item.icon}</span>
+            {item.label}
           </button>
         ))}
       </nav>

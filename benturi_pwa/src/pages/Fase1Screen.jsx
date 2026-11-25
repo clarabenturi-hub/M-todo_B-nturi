@@ -89,6 +89,7 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
     localStorage.removeItem('benturi_notified_48h');
     localStorage.removeItem('benturi_notified_72h');
     setTiradaTimestamp(ts);
+    window.dispatchEvent(new Event('benturi-tirada6-updated'));
 
     try {
       if ('Notification' in window && Notification.permission === 'default') {
@@ -407,25 +408,6 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
       >
         {t('fase1','btn_colapsar_onda','Iniciar proyección de futuro de alta probabilidad')}
       </button>
-
-      {tiradaTimestamp && localStorage.getItem('benturi_tirada6_saved_report') && (
-        <button
-          type="button"
-          className="btn-outline"
-          id="btn-ver-informe-guardado"
-          style={{ width: '100%' }}
-          onClick={() => {
-            const savedRep = localStorage.getItem('benturi_tirada6_saved_report') || '';
-            const savedQ = localStorage.getItem('benturi_tirada6_saved_question') || 'Mi proyección de 6 vectores';
-            setHideDownloadBtn(true);
-            localStorage.setItem('benturi_tirada6_hide_download', 'true');
-            setStreamedReport(savedRep);
-            setResult({ question: savedQ, timeLock });
-          }}
-        >
-          Ver mi informe generado
-        </button>
-      )}
 
       {is72hElapsed && (
         <button
