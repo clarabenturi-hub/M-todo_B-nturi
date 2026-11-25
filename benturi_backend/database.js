@@ -29,6 +29,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
             // Ignoramos error de alter table si la columna ya existe
             // Crear usuario admin por defecto si no existe
             db.run(`INSERT OR IGNORE INTO users (email, password, role, isPremium) VALUES ('admin@benturi.com', 'admin123', 'admin', 1)`);
+
+            // Habilitar y asegurar usuario de testeo clarabenturi@gmail.com con acceso completo (isPremium = 1)
+            db.run(`INSERT OR IGNORE INTO users (email, password, role, isPremium) VALUES ('clarabenturi@gmail.com', 'Clara2027$$', 'admin', 1)`, () => {
+              db.run(`UPDATE users SET password = ?, isPremium = 1, role = 'admin' WHERE LOWER(email) = 'clarabenturi@gmail.com'`, ['Clara2027$$']);
+            });
         });
       }
     });

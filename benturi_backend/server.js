@@ -55,9 +55,10 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
-    const { email, password } = req.body;
+    const email = (req.body.email || '').trim();
+    const { password } = req.body;
     
-    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+    db.get('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email], async (err, user) => {
         if (err) return res.status(500).json({ error: 'Error del servidor' });
         if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
         
