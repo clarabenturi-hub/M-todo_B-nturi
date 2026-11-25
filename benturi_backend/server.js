@@ -234,6 +234,68 @@ app.post('/api/push/send', authenticateToken, (req, res) => {
     });
 });
 
+// Programar las 3 notificaciones automáticas (24h, 48h y 72h) tras la tirada de 6 vectores
+app.post('/api/push/schedule-6-reminders', (req, res) => {
+    const { subscription, baseTimestamp } = req.body || {};
+    if (!subscription || !subscription.endpoint) {
+        return res.status(400).json({ error: 'Suscripción push requerida' });
+    }
+
+    const startMs = Number(baseTimestamp) || Date.now();
+    const keysStr = JSON.stringify(subscription.keys || {});
+    const reminders = [
+        {
+            hours: 24,
+            fireAt: startMs + 24 * 60 * 60 * 1000,
+            title: '¿Se cumplió tu proyección de 6 vectores?',
+            body: 'Ya han pasado 24 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte ! Aunque probablemente con el método Bénturi y por el precio de un café a la semana ,ya no te haga falta'
+        },
+        {
+            hours: 48,
+            fireAt: startMs + 48 * 60 * 60 * 1000,
+            title: '¿Se cumplió tu proyección de 6 vectores?',
+            body: 'Ya han pasado 48 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte ! Aunque probablemente con el método Bénturi y por el precio de un café a la semana ,ya no te haga falta'
+        },
+        {
+            hours: 72,
+            fireAt: startMs + 72 * 60 * 60 * 1000,
+            title: '¿Se cumplió tu proyección de 6 vectores?',
+            body: 'Ya han pasado 72 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte ! Aunque probablemente con el método Bénturi y por el precio de un café a la semana ,ya no te haga falta.'
+        }
+    ];
+
+    // Evitar duplicados pendientes para el mismo endpoint
+    db.run('DELETE FROM scheduled_notifications WHERE endpoint = ? AND sent = 0', [subscription.endpoint], () => {
+        const stmt = db.prepare('INSERT INTO scheduled_notifications (endpoint, keys, hours, title, body, fireAt, sent) VALUES (?, ?, ?, ?, ?, ?, 0)');
+        reminders.forEach(r => {
+            stmt.run([subscription.endpoint, keysStr, r.hours, r.title, r.body, r.fireAt]);
+        });
+        stmt.finalize();
+        res.status(201).json({ success: true, scheduled: [24, 48, 72] });
+    });
+});
+
+// Worker periódico (cada 60s) para disparar recordatorios de 24h, 48h y 72h cumplidos
+setInterval(() => {
+    const now = Date.now();
+    db.all('SELECT * FROM scheduled_notifications WHERE sent = 0 AND fireAt <= ?', [now], (err, rows) => {
+        if (err || !rows || rows.length === 0) return;
+        rows.forEach(row => {
+            const sub = {
+                endpoint: row.endpoint,
+                keys: JSON.parse(row.keys || '{}')
+            };
+            const payload = JSON.stringify({
+                title: row.title,
+                body: row.body,
+                url: '/?tab=6cartas'
+            });
+            webpush.sendNotification(sub, payload).catch(e => console.error('Error enviando recordatorio programado:', e));
+            db.run('UPDATE scheduled_notifications SET sent = 1 WHERE id = ?', [row.id]);
+        });
+    });
+}, 60 * 1000);
+
 // --- REDSYS ENDPOINTS ---
 
 app.post('/api/create-payment', authenticateToken, (req, res) => {
@@ -242,7 +304,8 @@ app.post('/api/create-payment', authenticateToken, (req, res) => {
     const dateStr = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(2, 10); // formato YYMMDDHH
     const orderId = `${dateStr}${req.user.id}`.padEnd(10, '0').slice(0, 12);
     
-    const amount = 999; // 9,99 €
+    const plan = req.body?.plan || 'despegue';
+    const amount = plan === 'premium' ? 1295 : 995; // 12,95 € (Premium) o 9,95 € (Despegue)
     
     // IMPORTANTE: En desarrollo local (localhost), Redsys NO puede alcanzar tu Webhook.
     // Usarías ngrok para exponer tu localhost.

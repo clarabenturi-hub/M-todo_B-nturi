@@ -41,6 +41,18 @@ const db = new sqlite3.Database(dbPath, (err) => {
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (userId) REFERENCES users(id)
     )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS scheduled_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      endpoint TEXT NOT NULL,
+      keys TEXT NOT NULL,
+      hours INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      fireAt INTEGER NOT NULL,
+      sent INTEGER DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
   }
 });
 

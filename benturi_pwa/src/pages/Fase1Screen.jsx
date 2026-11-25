@@ -10,7 +10,39 @@ import { FULL_DECK } from '../constants/appData'
 import { generarPDFDesdeMarkdown, stripEmojis } from '../utils/pdf_generator.js'
 import { generateDeterministicReport } from '../utils/brain_engine.js'
 
-export default function Fase1Screen() {
+const REMINDER_MESSAGES = [
+  {
+    hours: 24,
+    key: 'benturi_notified_24h',
+    title: '¿Se cumplió tu proyección de 6 vectores?',
+    body: 'Ya han pasado 24 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte ! Aunque probablemente con el método Bénturi y por el precio de un café a la semana ,ya no te haga falta'
+  },
+  {
+    hours: 48,
+    key: 'benturi_notified_48h',
+    title: '¿Se cumplió tu proyección de 6 vectores?',
+    body: 'Ya han pasado 48 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte ! Aunque probablemente con el método Bénturi y por el precio de un café a la semana ,ya no te haga falta'
+  },
+  {
+    hours: 72,
+    key: 'benturi_notified_72h',
+    title: '¿Se cumplió tu proyección de 6 vectores?',
+    body: 'Ya han pasado 72 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte ! Aunque probablemente con el método Bénturi y por el precio de un café a la semana ,ya no te haga falta.'
+  }
+];
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+export default function Fase1Screen({ onNavigateToSubscription }) {
   const { t, tList } = useTexts()
   const getMeaning = useCombinations()
 
@@ -24,7 +56,21 @@ export default function Fase1Screen() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [showApuestasDialog, setShowApuestasDialog] = useState(false)
   const [showProcedimientoDialog, setShowProcedimientoDialog] = useState(false)
-  
+  const [showVentajaPopup, setShowVentajaPopup] = useState(false)
+
+  // Control de ocultación del botón de descarga y desbloqueo a las 72 horas
+  const [tiradaTimestamp, setTiradaTimestamp] = useState(() => {
+    const saved = localStorage.getItem('benturi_tirada6_timestamp');
+    return saved ? Number(saved) : null;
+  })
+  const [hideDownloadBtn, setHideDownloadBtn] = useState(() => {
+    return localStorage.getItem('benturi_tirada6_hide_download') === 'true';
+  })
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  const isTest72h = typeof window !== 'undefined' && window.location.search.includes('test72h=1');
+  const is72hElapsed = isTest72h || (tiradaTimestamp !== null && (nowMs - tiradaTimestamp >= 72 * 60 * 60 * 1000));
+
   // Streaming states
   const [streamedReport, setStreamedReport] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -34,6 +80,74 @@ export default function Fase1Screen() {
   const streamTimer = useRef(null)
 
   const timeLockOptions = tList('fase1','opciones_candado',['En las próximas 78 horas'])
+
+  // Programar recordatorios de 24h, 48h y 72h en Web Push y almacenamiento local
+  const scheduleThreeReminders = async (baseTs) => {
+    const ts = baseTs || Date.now();
+    localStorage.setItem('benturi_tirada6_timestamp', String(ts));
+    localStorage.removeItem('benturi_notified_24h');
+    localStorage.removeItem('benturi_notified_48h');
+    localStorage.removeItem('benturi_notified_72h');
+    setTiradaTimestamp(ts);
+
+    try {
+      if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        const registration = await navigator.serviceWorker.ready;
+        const vapidPublicKey = 'BEUPFhphS_YDpLxWb18rsXx7L4aRrS2uAmlz5enpF0rHHJamSWq3G9cRy1sLAN3w186Egtavgp85cmiIGFkFTYw';
+        const sub = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        });
+        await fetch('/api/push/schedule-6-reminders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub, baseTimestamp: ts })
+        });
+      }
+    } catch (e) {
+      console.warn('Recordatorios locales activados (Push opcional no disponible):', e);
+    }
+  };
+
+  // Comprobar periódicamente si se han cumplido las 24h, 48h o 72h
+  useEffect(() => {
+    const checkReminders = async () => {
+      const currentNow = Date.now();
+      setNowMs(currentNow);
+      const savedTs = localStorage.getItem('benturi_tirada6_timestamp');
+      if (!savedTs) return;
+      const elapsedHours = (currentNow - Number(savedTs)) / (1000 * 60 * 60);
+
+      for (const rem of REMINDER_MESSAGES) {
+        if (elapsedHours >= rem.hours && localStorage.getItem(rem.key) !== 'true') {
+          localStorage.setItem(rem.key, 'true');
+          try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              if ('serviceWorker' in navigator) {
+                const reg = await navigator.serviceWorker.ready;
+                reg.showNotification(rem.title, {
+                  body: rem.body,
+                  icon: '/icon-192.png',
+                  badge: '/icon-192.png'
+                });
+              } else {
+                new Notification(rem.title, { body: rem.body, icon: '/icon-192.png' });
+              }
+            }
+          } catch (e) {
+            console.warn('No se pudo mostrar notificación local:', e);
+          }
+        }
+      }
+    };
+
+    checkReminders();
+    const timer = setInterval(checkReminders, 30000);
+    return () => clearInterval(timer);
+  }, [tiradaTimestamp]);
 
   const handleSelectCard = (card) => {
     const next = [...selectedCards]
@@ -76,6 +190,13 @@ export default function Fase1Screen() {
           }
         }
       }
+      if (fullText) {
+        const nowTs = Date.now();
+        localStorage.setItem('benturi_tirada6_saved_report', fullText);
+        localStorage.setItem('benturi_tirada6_saved_question', resData?.question || question);
+        // Al visualizar el informe completo, se programan las 3 notificaciones (24h, 48h, 72h)
+        scheduleThreeReminders(nowTs);
+      }
     } catch(err) {
       setStreamError(true);
       console.error(err);
@@ -89,6 +210,12 @@ export default function Fase1Screen() {
     try {
       if (streamedReport) {
         await generarPDFDesdeMarkdown(streamedReport, "Informe de Proyección Determinista - Método Bénturi");
+        // Ocultar el botón de descargar informe una vez descargado
+        localStorage.setItem('benturi_tirada6_hide_download', 'true');
+        setHideDownloadBtn(true);
+        if (!localStorage.getItem('benturi_tirada6_timestamp')) {
+          scheduleThreeReminders(Date.now());
+        }
       } else {
         alert("El informe aún no se ha generado correctamente.");
       }
@@ -98,6 +225,18 @@ export default function Fase1Screen() {
     } finally {
       setIsGeneratingPdf(false);
     }
+  };
+
+  const handleCloseReportModal = () => {
+    if (streamedReport && !streamError) {
+      // Una vez el usuario ha podido visualizar su informe, se oculta el botón de descargar informe
+      localStorage.setItem('benturi_tirada6_hide_download', 'true');
+      setHideDownloadBtn(true);
+    }
+    setResult(null);
+    setSelectedCards(Array(6).fill(null));
+    setQuestion('');
+    setStreamedReport('');
   };
 
   const handleProject = () => {
@@ -281,24 +420,81 @@ export default function Fase1Screen() {
         {t('fase1','btn_colapsar_onda','Iniciar proyección de futuro de alta probabilidad')}
       </button>
 
+      {tiradaTimestamp && localStorage.getItem('benturi_tirada6_saved_report') && (
+        <button
+          type="button"
+          className="btn-outline"
+          id="btn-ver-informe-guardado"
+          style={{ width: '100%' }}
+          onClick={() => {
+            const savedRep = localStorage.getItem('benturi_tirada6_saved_report') || '';
+            const savedQ = localStorage.getItem('benturi_tirada6_saved_question') || 'Mi proyección de 6 vectores';
+            setHideDownloadBtn(true);
+            localStorage.setItem('benturi_tirada6_hide_download', 'true');
+            setStreamedReport(savedRep);
+            setResult({ question: savedQ, timeLock });
+          }}
+        >
+          Ver mi informe generado
+        </button>
+      )}
+
+      {is72hElapsed && (
+        <button
+          type="button"
+          className="btn-primary"
+          id="btn-unete-ventaja-main"
+          style={{
+            background: 'linear-gradient(135deg, #d946ef, #00e5ff)',
+            color: '#ffffff',
+            fontWeight: '800',
+            border: 'none',
+            boxShadow: '0 0 24px rgba(217, 70, 239, 0.45)'
+          }}
+          onClick={() => setShowVentajaPopup(true)}
+        >
+          Únete a los que ya juegan con ventaja
+        </button>
+      )}
+
       {result && (
         <Dialog 
           title="INFORME CUÁNTICO EN TIEMPO REAL" 
-          onClose={() => { setResult(null); setSelectedCards(Array(6).fill(null)); setQuestion(''); setStreamedReport(''); }}
+          onClose={handleCloseReportModal}
           actions={
             <div className="stack" style={{width: '100%', gap: '8px'}}>
-              <button
-                className="btn-primary"
-                style={{width: '100%', margin: 0, background: isStreaming ? 'grey' : 'var(--magenta-primary)', color: 'white', border: 'none'}}
-                onClick={handleDownloadPdf}
-                disabled={isGeneratingPdf || isStreaming || streamError}
-              >
-                {isStreaming ? 'ESCRIBIENDO INFORME...' : (isGeneratingPdf ? 'GENERANDO PDF...' : 'DESCARGAR INFORME (PDF)')}
-              </button>
+              {!hideDownloadBtn && (
+                <button
+                  className="btn-primary"
+                  style={{width: '100%', margin: 0, background: isStreaming ? 'grey' : 'var(--magenta-primary)', color: 'white', border: 'none'}}
+                  onClick={handleDownloadPdf}
+                  disabled={isGeneratingPdf || isStreaming || streamError}
+                >
+                  {isStreaming ? 'ESCRIBIENDO INFORME...' : (isGeneratingPdf ? 'GENERANDO PDF...' : 'DESCARGAR INFORME (PDF)')}
+                </button>
+              )}
+              {is72hElapsed && (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  id="btn-unete-ventaja-modal"
+                  style={{
+                    width: '100%',
+                    margin: 0,
+                    background: 'linear-gradient(135deg, #d946ef, #00e5ff)',
+                    color: '#ffffff',
+                    fontWeight: '800',
+                    border: 'none'
+                  }}
+                  onClick={() => setShowVentajaPopup(true)}
+                >
+                  Únete a los que ya juegan con ventaja
+                </button>
+              )}
               <button
                 className="btn-secondary"
                 style={{width: '100%', margin: 0, opacity: 0.8, fontSize: '11px'}}
-                onClick={() => { setResult(null); setSelectedCards(Array(6).fill(null)); setQuestion(''); setStreamedReport(''); }}
+                onClick={handleCloseReportModal}
               >
                 CERRAR Y HACER OTRA PREGUNTA
               </button>
@@ -326,7 +522,7 @@ export default function Fase1Screen() {
               )}
             </div>
             
-            {!isStreaming && !streamError && (
+            {!isStreaming && !streamError && !hideDownloadBtn && (
               <p className="mt-16" style={{fontWeight:'700', color:'var(--blue-mid)'}}>
                 El informe ha sido completado con éxito. Ahora puedes descargarlo en formato PDF.
               </p>
@@ -336,6 +532,42 @@ export default function Fase1Screen() {
                 Generando respuesta cuántica en tiempo real...
               </p>
             )}
+          </div>
+        </Dialog>
+      )}
+
+      {showVentajaPopup && (
+        <Dialog
+          title="MÉTODO BÉNTURI"
+          onClose={() => setShowVentajaPopup(false)}
+        >
+          <div style={{ textAlign: 'center', padding: '8px 4px' }}>
+            <p style={{ fontSize: '15px', lineHeight: '1.65', color: '#ffffff', marginBottom: '20px' }}>
+              Ya ves que el Método Bénturi ha ajustado la proyección. Es un algoritmo, no es adivinación. Mucha suerte, aunque probablemente con el Método Bénturi y por el precio de un café a la semana ya no te hará falta.
+            </p>
+            <a
+              href="#suscripcion"
+              id="link-suscribete-aqui"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowVentajaPopup(false);
+                if (onNavigateToSubscription) onNavigateToSubscription();
+              }}
+              style={{
+                display: 'inline-block',
+                padding: '12px 28px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #d946ef, #00e5ff)',
+                color: '#ffffff',
+                fontWeight: '800',
+                fontSize: '15px',
+                textDecoration: 'underline',
+                boxShadow: '0 4px 18px rgba(217, 70, 239, 0.45)',
+                cursor: 'pointer'
+              }}
+            >
+              Suscríbete aquí
+            </a>
           </div>
         </Dialog>
       )}

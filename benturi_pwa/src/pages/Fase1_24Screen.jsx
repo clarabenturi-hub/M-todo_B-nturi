@@ -7,6 +7,7 @@ import { useCombinations } from '../hooks/useCombinations'
 import Dialog from '../components/Dialog'
 import CardSelectorModal from '../components/CardSelectorModal'
 import PyramidQuestionnaire from '../components/PyramidQuestionnaire'
+import SubscriptionScreen from './SubscriptionScreen'
 import { 
   FULL_DECK, 
   FASE2_QUESTIONS, 
@@ -390,7 +391,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     return '🟢 ZONA DE LO ESPIRITUAL (Escalones 9 al 11)'
   }
 
-  if (true || user?.isPremium) {
+  if (user?.isPremium || user?.role === 'admin') {
     return (
       <div className="page stack">
         
@@ -774,5 +775,5 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     )
   }
 
-  return null
+  return <SubscriptionScreen user={user} token={token} onLoginClick={onLoginClick} />
 }

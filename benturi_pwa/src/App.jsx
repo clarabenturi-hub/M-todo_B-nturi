@@ -12,6 +12,7 @@ import Fase1Screen from './pages/Fase1Screen'
 import Fase1_24Screen from './pages/Fase1_24Screen'
 import Fase3Screen from './pages/Fase3Screen'
 import AdminScreen from './pages/AdminScreen'
+import SubscriptionScreen from './pages/SubscriptionScreen'
 
 const NAV_ICONS = [
   <LayoutDashboard size={22} />,
@@ -99,10 +100,11 @@ export default function App() {
 
   const screens = [
     <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(4)} />,
-    <Fase1Screen key="fase1" />,
+    <Fase1Screen key="fase1" onNavigateToSubscription={() => setTab(5)} />,
     <Fase1_24Screen key="fase1_24" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
     <Fase3Screen key="fase3" />,
-    <AdminScreen key="admin" token={token} />
+    <AdminScreen key="admin" token={token} />,
+    <SubscriptionScreen key="subscription" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} onBack={() => setTab(1)} />
   ]
 
   return (
