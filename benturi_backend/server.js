@@ -16,8 +16,8 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy-cli
 const PLAN_QUOTAS = {
   free: {
     name: 'Prueba Gratuita (Tráfico Frío)',
-    max6Lifetime: 1, // 1 única consulta gratuita de 6 cartas por IP, Dispositivo y Correo
-    max6Monthly: 1,
+    max6Lifetime: 10, // Máximo 10 consultas gratuitas de 6 cartas por usuario (IP, Dispositivo y Correo)
+    max6Monthly: 10,
     max24Monthly: 0
   },
   despega: {
@@ -410,13 +410,16 @@ app.get('/api/quota-status', (req, res) => {
             conditions.push('LOWER(email) = ?');
             params.push(queryEmail);
         }
-        const sql = `SELECT * FROM reading_logs WHERE readingType = '6cartas' AND (${conditions.join(' OR ')}) ORDER BY createdAt ASC LIMIT 1`;
+        const sql = `SELECT COUNT(*) as totalCount, MIN(createdAt) as firstTrialAt FROM reading_logs WHERE readingType = '6cartas' AND (${conditions.join(' OR ')})`;
         db.get(sql, params, (err, row) => {
+            const usedCount = row ? (row.totalCount || 0) : 0;
             res.json({
                 plan: 'free',
                 quotas: PLAN_QUOTAS.free,
-                freeTrialUsed: Boolean(row),
-                firstTrialAt: row ? row.createdAt : null
+                freeTrialUsedCount: usedCount,
+                freeTrialLimit: PLAN_QUOTAS.free.max6Lifetime,
+                freeTrialUsed: usedCount >= PLAN_QUOTAS.free.max6Lifetime,
+                firstTrialAt: row ? row.firstTrialAt : null
             });
         });
     };
@@ -804,7 +807,7 @@ app.post('/api/generate-report', async (req, res) => {
                     });
                 }
 
-                // 2) Bloqueo técnico por IP, Dispositivo y Correo: máximo 1 consulta gratuita de 6 cartas
+                // 2) Bloqueo técnico por IP, Dispositivo y Correo: máximo 10 consultas gratuitas de 6 cartas por usuario
                 const conditions = ['ip = ?'];
                 const params = [clientIp];
                 if (deviceId) {
@@ -816,13 +819,15 @@ app.post('/api/generate-report', async (req, res) => {
                     params.push(userEmail);
                 }
 
-                const sql = `SELECT * FROM reading_logs WHERE readingType = '6cartas' AND (${conditions.join(' OR ')}) LIMIT 1`;
-                db.get(sql, params, (errLog, existingLog) => {
-                    if (existingLog) {
+                const maxFree6 = PLAN_QUOTAS.free.max6Lifetime || 10;
+                const sql = `SELECT COUNT(*) as count FROM reading_logs WHERE readingType = '6cartas' AND (${conditions.join(' OR ')})`;
+                db.get(sql, params, (errLog, rowCnt) => {
+                    const totalUsed = rowCnt ? (rowCnt.count || 0) : 0;
+                    if (totalUsed >= maxFree6) {
                         return resolve({
                             allowed: false,
                             code: 'FREE_TRIAL_LIMIT_REACHED',
-                            message: 'Ya has utilizado tu proyección gratuita de 6 vectores (límite de 1 consulta de prueba por usuario, dispositivo e IP). Espera a que se cumplan las 72 horas para comprobar la exactitud del algoritmo o suscríbete a Bénturi Premium para realizar proyecciones ilimitadas.'
+                            message: `Ya has utilizado tus ${maxFree6} proyecciones gratuitas de 6 vectores (límite de ${maxFree6} consultas por usuario, dispositivo e IP). Suscríbete a Bénturi Premium para realizar proyecciones ilimitadas.`
                         });
                     }
                     return resolve({ allowed: true, userId: dbUser?.id || null, email: userEmail, plan: 'free' });

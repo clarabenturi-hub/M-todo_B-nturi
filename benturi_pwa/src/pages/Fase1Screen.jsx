@@ -229,7 +229,7 @@ export default function Fase1Screen({ user, token, onQuickAuthSuccess, onNavigat
         const errData = await resp.json().catch(() => ({}));
         setQuotaBlockMessage(
           errData.error ||
-          'Ya has utilizado tu proyección gratuita de 6 vectores (límite de 1 consulta por usuario, dispositivo e IP).'
+          'Ya has utilizado tus 10 proyecciones gratuitas de 6 vectores (límite de 10 consultas por usuario, dispositivo e IP).'
         );
         setIsStreaming(false);
         return;

@@ -78,7 +78,7 @@ export default function AdminScreen({ token }) {
                             ? 'PREMIUM (6 Ilimitadas + 1x24/mes)'
                             : currentPlan === 'despega'
                               ? 'DESPEGA (12x6/mes + 1x24/mes)'
-                              : 'GRATIS (1 Prueba 6 Cartas)'}
+                              : 'GRATIS (Máx. 10 Tiradas de 6 Cartas)'}
                         </span>
                       </td>
                       <td style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
