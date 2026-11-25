@@ -102,7 +102,7 @@ export default function App() {
     <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(4)} />,
     <Fase1Screen key="fase1" onNavigateToSubscription={() => setTab(5)} />,
     <Fase1_24Screen key="fase1_24" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
-    <Fase3Screen key="fase3" />,
+    <Fase3Screen key="fase3" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
     <AdminScreen key="admin" token={token} />,
     <SubscriptionScreen key="subscription" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} onBack={() => setTab(1)} />
   ]
