@@ -349,29 +349,17 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
 
       <div className="glass-card">
         <h2>{t('fase1','titulo_parametros','ESTABLECER PARÁMETROS')}</h2>
-        <div className="params-row mt-24">
-          <div>
-            <label className="field-label" style={{ fontSize: '14px', lineHeight: '1.6', fontWeight: '400', display: 'block', marginBottom: '8px' }}>
-              {t('fase1','label_variable','Variable de Consulta (Actor + Acción):')}
-            </label>
-            <input
-              id="input-variable-consulta"
-              type="text"
-              value={question}
-              onChange={e => setQuestion(e.target.value)}
-              placeholder={t('fase1','placeholder_variable','Ej: ¿Conseguiré el nuevo trabajo...')}
-            />
-          </div>
-          <div>
-            <label className="field-label">{t('fase1','label_candado','Candado Temporal (T-Lock):')}</label>
-            <select
-              id="select-candado-temporal"
-              value={timeLock}
-              onChange={e => setTimeLock(e.target.value)}
-            >
-              {timeLockList.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
+        <div className="mt-24">
+          <label className="field-label" style={{ fontSize: '14px', lineHeight: '1.6', fontWeight: '400', display: 'block', marginBottom: '8px' }}>
+            {t('fase1','label_variable','Variable de Consulta (Actor + Acción):')}
+          </label>
+          <input
+            id="input-variable-consulta"
+            type="text"
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            placeholder={t('fase1','placeholder_variable','Ej: ¿Conseguiré el nuevo trabajo...')}
+          />
         </div>
       </div>
 
