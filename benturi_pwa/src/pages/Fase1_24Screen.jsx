@@ -240,15 +240,28 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
         console.warn("No se pudieron leer las respuestas de Fase 2:", e);
       }
 
+      const headers = { 'Content-Type': 'application/json' };
+      const activeToken = token || localStorage.getItem('benturi_token');
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+
       const resp = await fetch('/api/generate-report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           question: resData.question || 'Consulta General (Proyección Panorámica 24 Vectores)', 
           result: resData,
-          amorData 
+          amorData,
+          email: user?.email || localStorage.getItem('benturi_captured_email') || ''
         })
       });
+      if (resp.status === 429) {
+        const errData = await resp.json().catch(() => ({}));
+        setStreamedReport(`### 🛡️ CUOTA MENSUAL ALCANZADA\n\n${errData.error || 'Has alcanzado tu límite mensual de Proyección Profunda de 24 Cartas.'}`);
+        setIsStreaming(false);
+        return;
+      }
       if (!resp.ok) throw new Error('Error en la API');
       
       const reader = resp.body.getReader();

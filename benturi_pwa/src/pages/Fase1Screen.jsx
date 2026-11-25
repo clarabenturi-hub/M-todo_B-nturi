@@ -42,11 +42,29 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-export default function Fase1Screen({ onNavigateToSubscription }) {
+function getOrCreateDeviceId() {
+  try {
+    let devId = localStorage.getItem('benturi_device_id');
+    if (!devId) {
+      const randomPart = Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
+      devId = `bdev_${randomPart}`;
+      localStorage.setItem('benturi_device_id', devId);
+    }
+    return devId;
+  } catch {
+    return 'bdev_fallback';
+  }
+}
+
+export default function Fase1Screen({ user, token, onQuickAuthSuccess, onNavigateToSubscription }) {
   const { t, tList } = useTexts()
   const getMeaning = useCombinations()
 
   const [question, setQuestion] = useState('')
+  const [quickEmail, setQuickEmail] = useState(() => {
+    return user?.email || localStorage.getItem('benturi_captured_email') || ''
+  })
+  const [quotaBlockMessage, setQuotaBlockMessage] = useState('')
   const [timeLock, setTimeLock] = useState('En las próximas 78 horas')
   const [selectedCards, setSelectedCards] = useState(Array(6).fill(null))
   const [cardModalIndex, setCardModalIndex] = useState(null)
@@ -162,12 +180,61 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
     setIsStreaming(true);
     setStreamedReport('');
     setStreamError(false);
+    setQuotaBlockMessage('');
+    const deviceId = getOrCreateDeviceId();
+    const activeEmail = (user?.email || quickEmail || localStorage.getItem('benturi_captured_email') || '').trim().toLowerCase();
+
     try {
+      // Si el usuario de tráfico frío introdujo su correo y aún no tenía sesión, iniciamos sesión sin fricción en 1 clic
+      let activeToken = token || localStorage.getItem('benturi_token');
+      if (activeEmail && !user) {
+        try {
+          const authResp = await fetch('/api/auth/quick-access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: activeEmail, sendMagicLink: false })
+          });
+          if (authResp.ok) {
+            const authData = await authResp.json();
+            activeToken = authData.token;
+            localStorage.setItem('benturi_token', authData.token);
+            localStorage.setItem('benturi_captured_email', activeEmail);
+            if (onQuickAuthSuccess) onQuickAuthSuccess(authData.user, authData.token);
+          }
+        } catch (e) {
+          console.warn('No se pudo crear sesión rápida automática:', e);
+        }
+      }
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Device-Id': deviceId
+      };
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+
       const resp = await fetch('/api/generate-report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, result: resData })
+        headers,
+        body: JSON.stringify({
+          question,
+          result: resData,
+          email: activeEmail,
+          deviceId
+        })
       });
+
+      if (resp.status === 429) {
+        const errData = await resp.json().catch(() => ({}));
+        setQuotaBlockMessage(
+          errData.error ||
+          'Ya has utilizado tu proyección gratuita de 6 vectores (límite de 1 consulta por usuario, dispositivo e IP).'
+        );
+        setIsStreaming(false);
+        return;
+      }
+
       if (!resp.ok) throw new Error('Error en la API');
       
       const reader = resp.body.getReader();
@@ -196,8 +263,22 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
         const nowTs = Date.now();
         localStorage.setItem('benturi_tirada6_saved_report', fullText);
         localStorage.setItem('benturi_tirada6_saved_question', resData?.question || question);
-        // Al visualizar el informe completo, se programan las 3 notificaciones (24h, 48h, 72h)
+        // Al visualizar el informe completo, se programan las 3 notificaciones Web Push (24h, 48h, 72h)
         scheduleThreeReminders(nowTs);
+        // Guardar en el historial vinculado al correo y activar la secuencia de emails (24h, 48h, 72h y 96h)
+        if (activeEmail) {
+          fetch('/api/reports/save-history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: activeEmail,
+              readingType: '6cartas',
+              question: resData?.question || question,
+              reportMarkdown: fullText,
+              baseTimestamp: nowTs
+            })
+          }).catch(() => {});
+        }
       }
     } catch(err) {
       setStreamError(true);
@@ -244,6 +325,11 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
   const handleProject = () => {
     if (!question.trim()) {
       alert(t('fase1','alerta_variable_vacia','El Algoritmo requiere una Variable de Consulta válida.'))
+      return
+    }
+    const emailToUse = (user?.email || quickEmail || '').trim()
+    if (!emailToUse || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToUse)) {
+      alert('Introduce tu correo electrónico para guardar tu historial y activar el seguimiento de tu proyección.')
       return
     }
     if (!acceptedLegal) {
@@ -367,6 +453,22 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
             placeholder={t('fase1','placeholder_variable','Ej: ¿Conseguiré el nuevo trabajo...')}
           />
         </div>
+
+        {/* 11. Captura directa de correo sin fricción para tráfico frío */}
+        {!user && (
+          <div className="mt-16">
+            <label className="field-label" style={{ fontSize: '13.5px', lineHeight: '1.5', fontWeight: '600', color: '#00E5FF', display: 'block', marginBottom: '8px' }}>
+              ⚡ Tu Correo Electrónico (Acceso sin contraseña · Guarda tu informe y activa el seguimiento de 72h):
+            </label>
+            <input
+              id="input-quick-email-6cartas"
+              type="email"
+              value={quickEmail}
+              onChange={e => setQuickEmail(e.target.value)}
+              placeholder="Ej: tu@correo.com"
+            />
+          </div>
+        )}
       </div>
 
       <div>
@@ -505,7 +607,7 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
         className="btn-primary"
         id="btn-colapsar-onda"
         onClick={handleProject}
-        disabled={!question.trim() || !acceptedLegal}
+        disabled={!question.trim() || !acceptedLegal || !(user?.email || quickEmail.trim())}
       >
         {t('fase1','btn_colapsar_onda','Iniciar proyección de futuro de alta probabilidad')}
       </button>
@@ -578,7 +680,16 @@ export default function Fase1Screen({ onNavigateToSubscription }) {
             </p>
             
             <div className="glass-card-light custom-scroll-container report-content-markdown" style={{padding: '16px', marginBottom: '10px', maxHeight: '46vh', overflowY: 'auto', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere', textAlign: 'left', color: '#FFFFFF', fontSize: '14px', lineHeight: '1.6'}}>
-              {streamError ? (
+              {quotaBlockMessage ? (
+                <div style={{ textAlign: 'center', padding: '14px 8px' }}>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#00E5FF', marginBottom: '10px' }}>
+                    🛡️ LÍMITE DE PRUEBA GRATUITA ALCANZADO
+                  </div>
+                  <p style={{ color: '#e2e8f0', fontSize: '14px', lineHeight: '1.6', marginBottom: '14px' }}>
+                    {quotaBlockMessage}
+                  </p>
+                </div>
+              ) : streamError ? (
                 <span style={{color: '#ff6b6b'}}>Hubo un error de red generando el informe. Por favor, inténtalo de nuevo.</span>
               ) : (
                 <>

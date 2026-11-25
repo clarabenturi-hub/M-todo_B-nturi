@@ -55,11 +55,29 @@ export default function App() {
     }
   }, [])
 
-  // Abrir pestaña 6 CARTAS si viene desde la notificación push (?tab=6cartas)
+  // Abrir pestaña 6 CARTAS si viene desde la notificación push (?tab=6cartas) o verificar Magic Link (?magic_token=...)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.get('tab') === '6cartas') {
       setTab(1)
+    }
+    const magicToken = urlParams.get('magic_token')
+    if (magicToken) {
+      fetch('/api/auth/verify-magic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ magicToken })
+      })
+        .then(r => (r.ok ? r.json() : Promise.reject()))
+        .then(data => {
+          localStorage.setItem('benturi_token', data.token)
+          setToken(data.token)
+          setUser(data.user)
+          window.history.replaceState({}, document.title, '/')
+        })
+        .catch(() => {
+          alert('El enlace de acceso rápido ha expirado o no es válido.')
+        })
     }
   }, [])
 
@@ -136,7 +154,7 @@ export default function App() {
 
   const screens = [
     <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(4)} />,
-    <Fase1Screen key="fase1" onNavigateToSubscription={() => setTab(5)} />,
+    <Fase1Screen key="fase1" user={user} token={token} onQuickAuthSuccess={handleLoginSuccess} onNavigateToSubscription={() => setTab(5)} />,
     <Fase1_24Screen key="fase1_24" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
     <Fase3Screen key="fase3" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
     <AdminScreen key="admin" token={token} />,

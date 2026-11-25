@@ -8,8 +8,107 @@ const webpush = require('web-push');
 const fetch = require('node-fetch');
 const bcrypt = require('bcrypt');
 const { OAuth2Client } = require('google-auth-library');
+const { sendTransactionalEmail, buildFunnelEmailTemplate, DNS_DELIVERABILITY_RECORDS } = require('./emailService');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy-client-id');
+
+// 12. DEFINICIÓN DE CUOTAS DE USO MENSUAL ASOCIADAS A LOS PLANES
+const PLAN_QUOTAS = {
+  free: {
+    name: 'Prueba Gratuita (Tráfico Frío)',
+    max6Lifetime: 1, // 1 única consulta gratuita de 6 cartas por IP, Dispositivo y Correo
+    max6Monthly: 1,
+    max24Monthly: 0
+  },
+  despega: {
+    name: 'Bénturi Despega',
+    max6Lifetime: null,
+    max6Monthly: 12, // 12 proyecciones de 6 vectores al mes
+    max24Monthly: 1  // 1 proyección profunda de 24 cartas al mes
+  },
+  premium: {
+    name: 'Bénturi Premium',
+    max6Lifetime: null,
+    max6Monthly: -1, // Ilimitadas proyecciones de 6 vectores al mes (-1 = ilimitado)
+    max24Monthly: 1  // 1 proyección profunda de 24 cartas al mes
+  }
+};
+
+function getClientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  return req.socket?.remoteAddress || req.ip || 'unknown-ip';
+}
+
+function getCurrentMonthKey() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function getOptionalUserFromReq(req) {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return null;
+    return jwt.verify(token, process.env.JWT_SECRET || 'benturi_super_secret_key_2026');
+  } catch {
+    return null;
+  }
+}
+
+// Programar secuencia de correos del embudo (24h, 48h, 72h y 96h) para un correo capturado
+function scheduleFunnelEmailsForUser(email, baseTimestamp, originUrl) {
+  if (!email) return;
+  const cleanEmail = String(email).trim().toLowerCase();
+  const startMs = Number(baseTimestamp) || Date.now();
+  const appUrl = originUrl || process.env.FRONTEND_URL || 'https://m-todo-b-nturi.onrender.com';
+
+  const sequence = [
+    {
+      hours: 24,
+      subject: '¿Se cumplió tu proyección de 6 vectores? (24 horas)',
+      body: 'Ya han pasado 24 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte!! Aunque probablemente con el Método Bénturi y por el precio de un café a la semana, ya no te haga falta.',
+      ctaText: 'VER MI PROYECCIÓN EN MÉTODO BÉNTURI',
+      ctaUrl: `${appUrl}/?tab=6cartas`
+    },
+    {
+      hours: 48,
+      subject: '¿Se cumplió tu proyección de 6 vectores? (48 horas)',
+      body: 'Ya han pasado 48 horas desde tu tirada. Si ya has comprobado que el algoritmo no falla, imagina lo que puedes hacer teniéndolo disponible todo el tiempo. ¡¡Mucha suerte!! Aunque probablemente con el Método Bénturi y por el precio de un café a la semana, ya no te haga falta.',
+      ctaText: 'COMPROBAR MI PROYECCIÓN',
+      ctaUrl: `${appUrl}/?tab=6cartas`
+    },
+    {
+      hours: 72,
+      subject: '🔓 Suscripción Desbloqueada: ¿Se cumplió tu proyección de 6 vectores? (72 horas)',
+      body: 'Ya han pasado 72 horas desde tu tirada. Ya ves que el Método Bénturi ha ajustado la proyección. Es un algoritmo, no es adivinación. A partir de este momento tienes desbloqueado el acceso a los 3 Poderes completos (24 Cartas, Pirámide del Amor y Decide).',
+      ctaText: 'ÚNETE A LOS QUE YA JUEGAN CON VENTAJA',
+      ctaUrl: `${appUrl}/?tab=6cartas&test72h=1`
+    },
+    {
+      hours: 96,
+      subject: 'Último aviso (96h): Pasa de espectador a Arquitecto de tu vida',
+      body: 'Han pasado 96 horas desde tu primera decodificación de 6 vectores. Mientras muchos siguen moviendo sus fichas a ciegas, tú ya has comprobado la precisión del Algoritmo Bénturi. Accede hoy a tus proyecciones ilimitadas, la Matriz Profunda de 24 Cartas y el tercer poder DECIDE por el precio de un café a la semana.',
+      ctaText: 'ACTIVAR MI ACCESO A MÉTODO BÉNTURI',
+      ctaUrl: `${appUrl}/?tab=6cartas&test72h=1`
+    }
+  ];
+
+  db.run('DELETE FROM scheduled_emails WHERE LOWER(email) = ? AND sent = 0', [cleanEmail], () => {
+    const stmt = db.prepare('INSERT INTO scheduled_emails (email, hours, subject, htmlBody, textBody, fireAt, sent) VALUES (?, ?, ?, ?, ?, ?, 0)');
+    sequence.forEach(item => {
+      const { html, text } = buildFunnelEmailTemplate({
+        title: item.subject,
+        hoursLabel: `${item.hours} HORAS DESPUÉS DE TU TIRADA`,
+        messageBody: item.body,
+        ctaUrl: item.ctaUrl,
+        ctaText: item.ctaText
+      });
+      stmt.run([cleanEmail, item.hours, item.subject, html, text, startMs + item.hours * 60 * 60 * 1000]);
+    });
+    stmt.finalize();
+  });
+}
 
 // Configuración de web-push (usar llaves de process.env en prod)
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || 'BEUPFhphS_YDpLxWb18rsXx7L4aRrS2uAmlz5enpF0rHHJamSWq3G9cRy1sLAN3w186Egtavgp85cmiIGFkFTYw';
@@ -138,9 +237,246 @@ function authenticateToken(req, res, next) {
 }
 
 app.get('/api/me', authenticateToken, (req, res) => {
-    db.get('SELECT id, email, isPremium, role FROM users WHERE id = ?', [req.user.id], (err, user) => {
+    db.get('SELECT id, email, isPremium, role, plan FROM users WHERE id = ?', [req.user.id], (err, user) => {
         if (err || !user) return res.sendStatus(404);
-        res.json(user);
+        const effectivePlan = user.role === 'admin' ? 'premium' : (user.isPremium ? (user.plan && user.plan !== 'free' ? user.plan : 'premium') : 'free');
+        const monthKey = getCurrentMonthKey();
+        db.all(
+            'SELECT readingType, COUNT(*) as count FROM reading_logs WHERE (userId = ? OR LOWER(email) = LOWER(?)) AND monthKey = ? GROUP BY readingType',
+            [user.id, user.email, monthKey],
+            (err2, rows) => {
+                const usage = { tirada6Month: 0, tirada24Month: 0 };
+                (rows || []).forEach(r => {
+                    if (r.readingType === '6cartas') usage.tirada6Month = r.count;
+                    if (r.readingType === '24cartas') usage.tirada24Month = r.count;
+                });
+                res.json({
+                    ...user,
+                    plan: effectivePlan,
+                    quotas: PLAN_QUOTAS[effectivePlan] || PLAN_QUOTAS.free,
+                    usage
+                });
+            }
+        );
+    });
+});
+
+// 11. ENTRADA SIN FRICCIÓN Y GESTIÓN DE SESIONES (AUTH) 🔑⚡
+// Acceso rápido para tráfico frío de redes sociales: captura directa de correo electrónico
+// sin contraseñas ni formularios largos + Magic Link de 1 clic + activación de secuencia de 3-4 días
+app.post('/api/auth/quick-access', async (req, res) => {
+    const rawEmail = (req.body.email || '').trim().toLowerCase();
+    const sendMagicLink = Boolean(req.body.sendMagicLink);
+    if (!rawEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+        return res.status(400).json({ error: 'Introduce un correo electrónico válido.' });
+    }
+
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.get('host') || 'localhost:3000';
+    const originUrl = `${proto}://${host}`;
+
+    db.get('SELECT * FROM users WHERE LOWER(email) = ?', [rawEmail], async (err, existingUser) => {
+        if (err) return res.status(500).json({ error: 'Error del servidor' });
+
+        const finishAuth = async (userObj) => {
+            const effectivePlan = userObj.role === 'admin' ? 'premium' : (userObj.isPremium ? (userObj.plan && userObj.plan !== 'free' ? userObj.plan : 'premium') : 'free');
+            const token = jwt.sign(
+                { id: userObj.id, email: userObj.email, isPremium: Boolean(userObj.isPremium), role: userObj.role || 'user', plan: effectivePlan },
+                JWT_SECRET,
+                { expiresIn: '30d' }
+            );
+
+            // Si el usuario solicitó envío de Magic Link al correo
+            if (sendMagicLink) {
+                const magicUrl = `${originUrl}/?magic_token=${encodeURIComponent(token)}`;
+                const { html, text } = buildFunnelEmailTemplate({
+                    title: 'Tu enlace de acceso en 1 clic a Método Bénturi',
+                    hoursLabel: 'ACCESO RÁPIDO SIN CONTRASEÑA (MAGIC LINK)',
+                    messageBody: 'Pulsa el botón inferior para entrar directamente a tu cuenta del Método Bénturi, consultar tu historial de proyecciones y continuar tu evolución sin necesidad de contraseñas.',
+                    ctaUrl: magicUrl,
+                    ctaText: 'ENTRAR A MÉTODO BÉNTURI EN 1 CLIC'
+                });
+                await sendTransactionalEmail({
+                    to: userObj.email,
+                    subject: '🔑 Tu acceso en 1 clic a Método Bénturi',
+                    html,
+                    text
+                });
+            }
+
+            // Recuperar último informe guardado si existe para restaurar su historial
+            db.get('SELECT * FROM saved_reports WHERE LOWER(email) = ? ORDER BY createdAt DESC LIMIT 1', [rawEmail], (errRep, lastReport) => {
+                res.json({
+                    token,
+                    user: {
+                        id: userObj.id,
+                        email: userObj.email,
+                        isPremium: Boolean(userObj.isPremium),
+                        role: userObj.role || 'user',
+                        plan: effectivePlan
+                    },
+                    lastReport: lastReport || null,
+                    magicLinkSent: sendMagicLink
+                });
+            });
+        };
+
+        if (existingUser) {
+            return finishAuth(existingUser);
+        }
+
+        // Crear cuenta instantánea sin fricción para tráfico frío
+        try {
+            const autoPass = require('crypto').randomBytes(16).toString('hex');
+            const hashedPassword = await bcrypt.hash(autoPass, 10);
+            db.run(
+                'INSERT INTO users (email, password, isPremium, plan, role) VALUES (?, ?, 0, ?, ?)',
+                [rawEmail, hashedPassword, 'free', 'user'],
+                function(insertErr) {
+                    if (insertErr) return res.status(500).json({ error: 'No se pudo registrar el correo' });
+                    finishAuth({
+                        id: this.lastID,
+                        email: rawEmail,
+                        isPremium: 0,
+                        plan: 'free',
+                        role: 'user'
+                    });
+                }
+            );
+        } catch (hashErr) {
+            return res.status(500).json({ error: 'Error creando sesión rápida' });
+        }
+    });
+});
+
+// Verificar Magic Link Token al hacer clic desde el correo
+app.post('/api/auth/verify-magic', (req, res) => {
+    const { magicToken } = req.body || {};
+    if (!magicToken) return res.status(400).json({ error: 'Token requerido' });
+    jwt.verify(magicToken, JWT_SECRET, (err, decoded) => {
+        if (err || !decoded) return res.status(401).json({ error: 'El enlace mágico ha expirado o es inválido.' });
+        db.get('SELECT id, email, isPremium, role, plan FROM users WHERE id = ?', [decoded.id], (dbErr, user) => {
+            if (dbErr || !user) return res.status(404).json({ error: 'Usuario no encontrado' });
+            const token = jwt.sign(
+                { id: user.id, email: user.email, isPremium: Boolean(user.isPremium), role: user.role, plan: user.plan || 'free' },
+                JWT_SECRET,
+                { expiresIn: '30d' }
+            );
+            res.json({ token, user });
+        });
+    });
+});
+
+// Guardar informe en el historial del correo y activar secuencia de correos (24h, 48h, 72h, 96h)
+app.post('/api/reports/save-history', (req, res) => {
+    const { email, readingType, question, reportMarkdown, baseTimestamp } = req.body || {};
+    if (!email || !reportMarkdown) {
+        return res.status(400).json({ error: 'Email e informe requeridos' });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    const nowTs = Number(baseTimestamp) || Date.now();
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.get('host') || 'localhost:3000';
+    const originUrl = `${proto}://${host}`;
+
+    db.run(
+        'INSERT INTO saved_reports (email, readingType, question, reportMarkdown, createdAt) VALUES (?, ?, ?, ?, ?)',
+        [cleanEmail, readingType || '6cartas', question || '', reportMarkdown, nowTs],
+        function(err) {
+            if (err) console.error('Error guardando historial de informe:', err);
+            if ((readingType || '6cartas') === '6cartas') {
+                scheduleFunnelEmailsForUser(cleanEmail, nowTs, originUrl);
+            }
+            res.json({ success: true, reportId: this?.lastID });
+        }
+    );
+});
+
+// Consultar estado de cuotas y elegibilidad anti-abuso (punto 12)
+app.get('/api/quota-status', (req, res) => {
+    const ip = getClientIp(req);
+    const deviceId = (req.query.deviceId || req.headers['x-device-id'] || '').trim();
+    const queryEmail = (req.query.email || '').trim().toLowerCase();
+    const authUser = getOptionalUserFromReq(req);
+
+    const checkFreeLock = () => {
+        const conditions = ['ip = ?'];
+        const params = [ip];
+        if (deviceId) {
+            conditions.push('deviceId = ?');
+            params.push(deviceId);
+        }
+        if (queryEmail) {
+            conditions.push('LOWER(email) = ?');
+            params.push(queryEmail);
+        }
+        const sql = `SELECT * FROM reading_logs WHERE readingType = '6cartas' AND (${conditions.join(' OR ')}) ORDER BY createdAt ASC LIMIT 1`;
+        db.get(sql, params, (err, row) => {
+            res.json({
+                plan: 'free',
+                quotas: PLAN_QUOTAS.free,
+                freeTrialUsed: Boolean(row),
+                firstTrialAt: row ? row.createdAt : null
+            });
+        });
+    };
+
+    if (authUser && authUser.id) {
+        db.get('SELECT id, email, isPremium, role, plan FROM users WHERE id = ?', [authUser.id], (err, dbUser) => {
+            if (err || !dbUser) return checkFreeLock();
+            if (dbUser.role === 'admin' || dbUser.email.toLowerCase() === 'clarabenturi@gmail.com') {
+                return res.json({
+                    plan: 'premium',
+                    isAdmin: true,
+                    quotas: PLAN_QUOTAS.premium,
+                    freeTrialUsed: false,
+                    usage: { tirada6Month: 0, tirada24Month: 0 }
+                });
+            }
+            if (dbUser.isPremium) {
+                const effectivePlan = (dbUser.plan && dbUser.plan !== 'free') ? dbUser.plan : 'premium';
+                const monthKey = getCurrentMonthKey();
+                db.all(
+                    'SELECT readingType, COUNT(*) as count FROM reading_logs WHERE (userId = ? OR LOWER(email) = LOWER(?)) AND monthKey = ? GROUP BY readingType',
+                    [dbUser.id, dbUser.email, monthKey],
+                    (err2, rows) => {
+                        const usage = { tirada6Month: 0, tirada24Month: 0 };
+                        (rows || []).forEach(r => {
+                            if (r.readingType === '6cartas') usage.tirada6Month = r.count;
+                            if (r.readingType === '24cartas') usage.tirada24Month = r.count;
+                        });
+                        res.json({
+                            plan: effectivePlan,
+                            quotas: PLAN_QUOTAS[effectivePlan] || PLAN_QUOTAS.premium,
+                            freeTrialUsed: false,
+                            usage
+                        });
+                    }
+                );
+            } else {
+                checkFreeLock();
+            }
+        });
+    } else {
+        checkFreeLock();
+    }
+});
+
+// 13. ENDPOINT DE CONFIGURACIÓN DNS (SPF, DKIM, DMARC) Y ESTADO DE CORREOS
+app.get('/api/email/deliverability-config', (req, res) => {
+    const activeProvider = process.env.RESEND_API_KEY
+        ? 'Resend (Activo)'
+        : process.env.POSTMARK_SERVER_TOKEN
+            ? 'Postmark (Activo)'
+            : process.env.SENDGRID_API_KEY
+                ? 'SendGrid (Activo)'
+                : 'Cola SQLite Activa (Pendiente API Key en Render)';
+    db.get('SELECT COUNT(*) as pendingCount FROM scheduled_emails WHERE sent = 0', [], (err, row) => {
+        res.json({
+            activeProvider,
+            pendingScheduledEmails: row ? row.pendingCount : 0,
+            dnsConfiguration: DNS_DELIVERABILITY_RECORDS
+        });
     });
 });
 
@@ -155,7 +491,7 @@ function requireAdmin(req, res, next) {
 }
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
-    db.all('SELECT id, email, isPremium, role, createdAt FROM users ORDER BY createdAt DESC', [], (err, rows) => {
+    db.all('SELECT id, email, isPremium, plan, role, createdAt FROM users ORDER BY createdAt DESC', [], (err, rows) => {
         if (err) return res.status(500).json({ error: 'Error obteniendo usuarios' });
         res.json(rows);
     });
@@ -163,10 +499,12 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
 
 app.post('/api/admin/users/:id/toggle-premium', authenticateToken, requireAdmin, (req, res) => {
     const userId = req.params.id;
-    const { isPremium } = req.body;
-    db.run('UPDATE users SET isPremium = ? WHERE id = ?', [isPremium ? 1 : 0, userId], function(err) {
+    const { isPremium, plan } = req.body;
+    const nextPlan = plan ? plan : (isPremium ? 'premium' : 'free');
+    const nextPrem = nextPlan !== 'free' ? 1 : 0;
+    db.run('UPDATE users SET isPremium = ?, plan = ? WHERE id = ?', [nextPrem, nextPlan, userId], function(err) {
         if (err) return res.status(500).json({ error: 'Error actualizando usuario' });
-        res.json({ success: true });
+        res.json({ success: true, isPremium: Boolean(nextPrem), plan: nextPlan });
     });
 });
 
@@ -276,7 +614,7 @@ app.post('/api/push/schedule-6-reminders', (req, res) => {
     });
 });
 
-// Worker periódico (cada 60s) para disparar recordatorios de 24h, 48h y 72h cumplidos
+// Worker periódico (cada 60s) para disparar recordatorios Web Push (24h, 48h, 72h) y Correos Transaccionales (24h, 48h, 72h, 96h)
 setInterval(() => {
     const now = Date.now();
     db.all('SELECT * FROM scheduled_notifications WHERE sent = 0 AND fireAt <= ?', [now], (err, rows) => {
@@ -293,6 +631,23 @@ setInterval(() => {
             });
             webpush.sendNotification(sub, payload).catch(e => console.error('Error enviando recordatorio programado:', e));
             db.run('UPDATE scheduled_notifications SET sent = 1 WHERE id = ?', [row.id]);
+        });
+    });
+
+    // Disparar correos transaccionales programados del embudo (24h, 48h, 72h, 96h)
+    db.all('SELECT * FROM scheduled_emails WHERE sent = 0 AND fireAt <= ?', [now], (errEmail, emailRows) => {
+        if (errEmail || !emailRows || emailRows.length === 0) return;
+        emailRows.forEach(async (eRow) => {
+            const result = await sendTransactionalEmail({
+                to: eRow.email,
+                subject: eRow.subject,
+                html: eRow.htmlBody,
+                text: eRow.textBody
+            });
+            db.run(
+                'UPDATE scheduled_emails SET sent = 1, providerResponse = ? WHERE id = ?',
+                [result.response || result.error || result.provider, eRow.id]
+            );
         });
     });
 }, 60 * 1000);
@@ -391,15 +746,120 @@ const path = require('path');
 
 app.post('/api/generate-report', async (req, res) => {
     try {
-        const { question, result, amorData } = req.body;
-        
+        const { question, result, amorData, email: bodyEmail, deviceId: bodyDeviceId } = req.body;
+        const clientIp = getClientIp(req);
+        const deviceId = (bodyDeviceId || req.headers['x-device-id'] || '').trim();
+        const authUser = getOptionalUserFromReq(req);
+        const is24 = Boolean(result && result.cards && result.cards.length === 24);
+        const readingType = is24 ? '24cartas' : '6cartas';
+        const monthKey = getCurrentMonthKey();
+
+        // 12. VERIFICACIÓN DE LÍMITES DE USO Y ANTI-ABUSO (IP, DISPOSITIVO, CORREO Y CUOTAS MENSUALES)
+        const checkAccessAndQuota = () => new Promise((resolve) => {
+            const resolveUser = (dbUser) => {
+                const userEmail = (dbUser?.email || bodyEmail || '').trim().toLowerCase();
+
+                // Admin o cuenta de testeo oficial clarabenturi@gmail.com tienen acceso ilimitado sin bloqueo
+                if (dbUser && (dbUser.role === 'admin' || userEmail === 'clarabenturi@gmail.com')) {
+                    return resolve({ allowed: true, userId: dbUser.id, email: userEmail, plan: 'premium', isAdmin: true });
+                }
+
+                // Usuarios con suscripción activa (Bénturi Despega o Bénturi Premium)
+                if (dbUser && dbUser.isPremium) {
+                    const effectivePlan = (dbUser.plan && dbUser.plan !== 'free') ? dbUser.plan : 'premium';
+                    const quota = PLAN_QUOTAS[effectivePlan] || PLAN_QUOTAS.premium;
+
+                    db.get(
+                        'SELECT COUNT(*) as count FROM reading_logs WHERE (userId = ? OR LOWER(email) = ?) AND readingType = ? AND monthKey = ?',
+                        [dbUser.id, userEmail, readingType, monthKey],
+                        (errCnt, rowCnt) => {
+                            const usedThisMonth = rowCnt ? rowCnt.count : 0;
+                            if (is24 && quota.max24Monthly !== -1 && usedThisMonth >= quota.max24Monthly) {
+                                return resolve({
+                                    allowed: false,
+                                    code: 'QUOTA_24_EXCEEDED',
+                                    message: `Has alcanzado tu cuota mensual de ${quota.max24Monthly} Proyección Profunda de 24 Cartas incluida en tu plan ${quota.name} este mes (${monthKey}). Tu cuota se renovará automáticamente en tu próximo ciclo mensual.`
+                                });
+                            }
+                            if (!is24 && quota.max6Monthly !== -1 && usedThisMonth >= quota.max6Monthly) {
+                                return resolve({
+                                    allowed: false,
+                                    code: 'QUOTA_6_EXCEEDED',
+                                    message: `Has alcanzado el límite de ${quota.max6Monthly} proyecciones mensuales de 6 vectores de tu plan ${quota.name}. Actualiza a Bénturi Premium para disfrutar de proyecciones de 6 vectores ilimitadas.`
+                                });
+                            }
+                            return resolve({ allowed: true, userId: dbUser.id, email: userEmail, plan: effectivePlan });
+                        }
+                    );
+                    return;
+                }
+
+                // Usuarios sin suscripción (Tráfico frío / Prueba Gratuita):
+                // 1) No pueden ejecutar la matriz de 24 cartas
+                if (is24) {
+                    return resolve({
+                        allowed: false,
+                        code: 'PREMIUM_REQUIRED',
+                        message: 'La Matriz Profunda de 24 Vectores requiere una suscripción activa al Método Bénturi.'
+                    });
+                }
+
+                // 2) Bloqueo técnico por IP, Dispositivo y Correo: máximo 1 consulta gratuita de 6 cartas
+                const conditions = ['ip = ?'];
+                const params = [clientIp];
+                if (deviceId) {
+                    conditions.push('deviceId = ?');
+                    params.push(deviceId);
+                }
+                if (userEmail) {
+                    conditions.push('LOWER(email) = ?');
+                    params.push(userEmail);
+                }
+
+                const sql = `SELECT * FROM reading_logs WHERE readingType = '6cartas' AND (${conditions.join(' OR ')}) LIMIT 1`;
+                db.get(sql, params, (errLog, existingLog) => {
+                    if (existingLog) {
+                        return resolve({
+                            allowed: false,
+                            code: 'FREE_TRIAL_LIMIT_REACHED',
+                            message: 'Ya has utilizado tu proyección gratuita de 6 vectores (límite de 1 consulta de prueba por usuario, dispositivo e IP). Espera a que se cumplan las 72 horas para comprobar la exactitud del algoritmo o suscríbete a Bénturi Premium para realizar proyecciones ilimitadas.'
+                        });
+                    }
+                    return resolve({ allowed: true, userId: dbUser?.id || null, email: userEmail, plan: 'free' });
+                });
+            };
+
+            if (authUser && authUser.id) {
+                db.get('SELECT * FROM users WHERE id = ?', [authUser.id], (err, u) => resolveUser(u || null));
+            } else if (bodyEmail) {
+                db.get('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [String(bodyEmail).trim()], (err, u) => resolveUser(u || null));
+            } else {
+                resolveUser(null);
+            }
+        });
+
+        const accessCheck = await checkAccessAndQuota();
+        if (!accessCheck.allowed) {
+            return res.status(429).json({
+                error: accessCheck.message,
+                code: accessCheck.code
+            });
+        }
+
+        // Registrar el uso en reading_logs (excepto admin de testeo para que pueda probar infinitamente sin bloquear su IP)
+        if (!accessCheck.isAdmin) {
+            db.run(
+                'INSERT INTO reading_logs (userId, email, ip, deviceId, readingType, question, monthKey, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [accessCheck.userId, accessCheck.email || '', clientIp, deviceId, readingType, question || '', monthKey, Date.now()]
+            );
+        }
+
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             console.warn("Falta GEMINI_API_KEY en .env");
         }
         
         const genAI = new GoogleGenerativeAI(apiKey);
-        const is24 = result.cards && result.cards.length === 24;
         const promptFilename = is24 ? '../Informe_Usuario_24.txt' : '../Informe Usuario .txt';
         const promptFile = path.join(__dirname, promptFilename);
         const systemPrompt = fs.readFileSync(promptFile, 'utf8');
