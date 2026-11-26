@@ -24,7 +24,8 @@ const LIKERT_TEXTS = {
 export default function PyramidQuestionnaire({ 
   onComplete, 
   initialDone = false, 
-  onReset 
+  onReset,
+  isPremiumUnlocked = false
 }) {
   // Etapa activa del cuestionario integrado: 1 = Situacional (48 preguntas), 2 = Sintonización Likert (55 preguntas)
   const [stage, setStage] = useState(() => {
@@ -343,58 +344,82 @@ export default function PyramidQuestionnaire({
           <div style={{ fontSize: '20px', fontWeight: '800', color: '#ffffff', marginTop: '4px' }}>
             Escalón {activeLv}: {LEVEL_NAMES_11[activeLv]}
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', lineHeight: '1.5' }}>
-            Nivel Situacional Vivencial: <strong style={{ color: '#38bdf8' }}>{activeResult.levelSit || activeLv}/11</strong> • Sintonización de Frecuencia: <strong style={{ color: '#38bdf8' }}>{activeResult.levelClas || activeLv}/11</strong>
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
             Fecha de Calibración: {activeResult.date}
           </div>
 
-          {/* Plan de Acción */}
-          {ACTION_PLANS_11[activeLv] && (
-            <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '12px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#40e0d0', marginBottom: '8px' }}>
-                {ACTION_PLANS_11[activeLv].title}
+          {isPremiumUnlocked ? (
+            <>
+              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', lineHeight: '1.5' }}>
+                Nivel Situacional Vivencial: <strong style={{ color: '#38bdf8' }}>{activeResult.levelSit || activeLv}/11</strong> • Sintonización de Frecuencia: <strong style={{ color: '#38bdf8' }}>{activeResult.levelClas || activeLv}/11</strong>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {ACTION_PLANS_11[activeLv].actions.map((act, idx) => (
-                  <div key={idx} style={{ fontSize: '12px', color: '#e2e8f0', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <span style={{ color: '#38bdf8', flexShrink: 0 }}>✓</span>
-                    <span>{act}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* Hitos No Vividos Detectados */}
-          {activeResult.hitosFuturos && activeResult.hitosFuturos.length > 0 && (
-            <div style={{
-              marginTop: '16px',
-              padding: '12px 14px',
-              borderRadius: '10px',
-              background: 'rgba(56, 189, 248, 0.08)',
-              border: '1px dashed rgba(56, 189, 248, 0.4)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#38bdf8' }}>
-                <span>🛡️</span>
-                <span>{activeResult.hitosFuturos.length} Hitos No Vividos Registrados (Indicadores para el Futuro)</span>
+              {/* Plan de Acción */}
+              {ACTION_PLANS_11[activeLv] && (
+                <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '12px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#40e0d0', marginBottom: '8px' }}>
+                    {ACTION_PLANS_11[activeLv].title}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {ACTION_PLANS_11[activeLv].actions.map((act, idx) => (
+                      <div key={idx} style={{ fontSize: '12px', color: '#e2e8f0', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                        <span style={{ color: '#38bdf8', flexShrink: 0 }}>✓</span>
+                        <span>{act}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Hitos No Vividos Detectados */}
+              {activeResult.hitosFuturos && activeResult.hitosFuturos.length > 0 && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  border: '1px dashed rgba(56, 189, 248, 0.4)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#38bdf8' }}>
+                    <span>🛡️</span>
+                    <span>{activeResult.hitosFuturos.length} Hitos No Vividos Registrados (Indicadores para el Futuro)</span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#cbd5e1', margin: '4px 0 8px', lineHeight: '1.4' }}>
+                    Eventos potenciales que el Algoritmo Bénturi toma como referencia para no interpretar como vivencias pasadas:
+                  </p>
+                  <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {activeResult.hitosFuturos.slice(0, 4).map((h, i) => (
+                      <div key={i} style={{ fontSize: '11px', color: '#94a3b8' }}>
+                        • [{h.area}] <em>"{h.textoOpcion}"</em>
+                      </div>
+                    ))}
+                    {activeResult.hitosFuturos.length > 4 && (
+                      <div style={{ fontSize: '11px', color: '#38bdf8', fontStyle: 'italic' }}>
+                        + {activeResult.hitosFuturos.length - 4} hitos más registrados en tu diagnóstico.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Vista bloqueada del análisis profundo para usuarios sin suscripción Premium */
+            <div
+              style={{
+                marginTop: '16px',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, rgba(217, 70, 239, 0.12), rgba(0, 229, 255, 0.08))',
+                border: '1px dashed rgba(217, 70, 239, 0.5)',
+                textAlign: 'center'
+              }}
+            >
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#D946EF', marginBottom: '6px' }}>
+                🔒 ANÁLISIS VIBRACIONAL Y PLAN DE ASCENSO BLOQUEADOS
               </div>
-              <p style={{ fontSize: '11px', color: '#cbd5e1', margin: '4px 0 8px', lineHeight: '1.4' }}>
-                Eventos potenciales que el Algoritmo Bénturi toma como referencia para no interpretar como vivencias pasadas:
+              <p style={{ fontSize: '12px !important', color: '#cbd5e1', lineHeight: '1.5', margin: 0 }}>
+                Tu escalón en la Pirámide del Amor ha quedado registrado. Continúa al <strong>Paso 2 (Matriz de 24 Cartas)</strong> para completar tu tirada y desbloquear tu análisis profundo junto con tu Informe de 24 Vectores.
               </p>
-              <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {activeResult.hitosFuturos.slice(0, 4).map((h, i) => (
-                  <div key={i} style={{ fontSize: '11px', color: '#94a3b8' }}>
-                    • [{h.area}] <em>"{h.textoOpcion}"</em>
-                  </div>
-                ))}
-                {activeResult.hitosFuturos.length > 4 && (
-                  <div style={{ fontSize: '11px', color: '#38bdf8', fontStyle: 'italic' }}>
-                    + {activeResult.hitosFuturos.length - 4} hitos más registrados en tu diagnóstico.
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>

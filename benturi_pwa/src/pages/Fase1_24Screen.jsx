@@ -26,10 +26,11 @@ const LIKERT_TEXTS = {
   5: "Totalmente de acuerdo"
 }
 
-export default function Fase1_24Screen({ user, token, onLoginClick }) {
+export default function Fase1_24Screen({ user, token, onLoginClick, onNavigateToSubscription }) {
   const { t, tList } = useTexts()
   const getMeaning = useCombinations()
   const [loading, setLoading] = useState(false)
+  const isPremiumUnlocked = Boolean(user?.isPremium || user?.role === 'admin')
 
   // Estado del Stepper: 1 = Sintonización Vibracional (Amor), 2 = Matriz de 24 Cartas
   const [activeStep, setActiveStep] = useState(() => {
@@ -187,7 +188,18 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
   // ESTADO DE LA MATRIZ DE 24 VECTORES (CARTAS)
   // -------------------------------------------------------------
   const [timeLock, setTimeLock] = useState('En las próximas 78 horas')
-  const [selectedCards, setSelectedCards] = useState(Array(24).fill(null))
+  const [selectedCards, setSelectedCards] = useState(() => {
+    try {
+      const savedIds = localStorage.getItem('benturi_pending_24_cards')
+      if (savedIds) {
+        const parsedIds = JSON.parse(savedIds)
+        if (Array.isArray(parsedIds) && parsedIds.length === 24) {
+          return parsedIds.map(id => FULL_DECK.find(c => c.id === id) || null)
+        }
+      }
+    } catch {}
+    return Array(24).fill(null)
+  })
   const [cardModalIndex, setCardModalIndex] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [codeStream, setCodeStream] = useState('')
@@ -211,6 +223,9 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     const next = [...selectedCards]
     next[cardModalIndex] = card
     setSelectedCards(next)
+    try {
+      localStorage.setItem('benturi_pending_24_cards', JSON.stringify(next.map(c => c ? c.id : null)))
+    } catch {}
     setCardModalIndex(null)
   }
 
@@ -319,6 +334,9 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
       if (!filled[i]) filled[i] = shuffled[ri++]
     }
     setSelectedCards(filled)
+    try {
+      localStorage.setItem('benturi_pending_24_cards', JSON.stringify(filled.map(c => c ? c.id : null)))
+    } catch {}
 
     setIsProcessing(true)
     setCodeStream('')
@@ -329,6 +347,22 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
       for (let i = 0; i < 150; i++) s += HEX[Math.floor(Math.random() * 16)]
       setCodeStream(s)
     }, 30)
+
+    // Si el usuario NO es Premium, al intentar generar el informe se bloquea y se redirige a la suscripción
+    if (!isPremiumUnlocked) {
+      setTimeout(() => {
+        clearInterval(streamTimer.current)
+        setCodeStream('MATRIZ DE 24 VECTORES Y ESCALÓN DE LA PIRÁMIDE REGISTRADOS.\n\nSE REQUIERE SUSCRIPCIÓN BÉNTURI PREMIUM PARA EMITIR EL INFORME.')
+        setTimeout(() => {
+          setIsProcessing(false)
+          localStorage.setItem('benturi_24_paywall_triggered', 'true')
+          if (onNavigateToSubscription) {
+            onNavigateToSubscription()
+          }
+        }, 900)
+      }, 1800)
+      return
+    }
 
     setTimeout(() => {
       clearInterval(streamTimer.current)
@@ -404,8 +438,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
     return '🟢 ZONA DE LO ESPIRITUAL (Escalones 9 al 11)'
   }
 
-  if (user?.isPremium || user?.role === 'admin') {
-    return (
+  return (
       <div className="page stack">
         
         {/* ENCABEZADO PRINCIPAL DE LA PROYECCIÓN 24 VECTORES */}
@@ -564,6 +597,7 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
                   initialDone={done}
                   onComplete={handleQuizComplete}
                   onReset={handleQuizReset}
+                  isPremiumUnlocked={isPremiumUnlocked}
                 />
 
                 {done && (
@@ -786,7 +820,4 @@ export default function Fase1_24Screen({ user, token, onLoginClick }) {
         )}
       </div>
     )
-  }
-
-  return <SubscriptionScreen user={user} token={token} onLoginClick={onLoginClick} />
 }

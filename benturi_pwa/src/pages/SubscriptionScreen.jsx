@@ -49,8 +49,32 @@ export default function SubscriptionScreen({ user, token, onLoginClick, onBack }
     }
   }
 
+  const hasPending24Reading = typeof window !== 'undefined' && (
+    localStorage.getItem('benturi_24_paywall_triggered') === 'true' ||
+    Boolean(localStorage.getItem('benturi_pending_24_cards'))
+  )
+
   return (
     <div className="page stack">
+      {hasPending24Reading && (
+        <div
+          className="glass-card"
+          style={{
+            border: '1.5px solid #00E5FF',
+            background: 'linear-gradient(135deg, rgba(0, 229, 255, 0.14), rgba(217, 70, 239, 0.14))',
+            textAlign: 'center',
+            padding: '16px 18px'
+          }}
+        >
+          <div style={{ fontSize: '13px', fontWeight: '800', color: '#00E5FF', letterSpacing: '0.5px', marginBottom: '6px' }}>
+            🔒 TU MATRIZ DE 24 VECTORES Y TU ESCALÓN DE LA PIRÁMIDE ESTÁN GUARDADOS
+          </div>
+          <p style={{ fontSize: '13px !important', color: '#e2e8f0', lineHeight: '1.5', margin: 0 }}>
+            Hemos guardado tus 24 cartas seleccionadas y tu calibración en la Pirámide del Amor. Suscríbete a <strong>Bénturi Premium</strong> para generar y descargar tu Informe Profundo de 24 Cartas, desbloquear tu análisis vibracional completo y activar el tercer poder <strong>DECIDE</strong>.
+          </p>
+        </div>
+      )}
+
       <div className="glass-card-light" style={{ textAlign: 'center' }}>
         <div className="paywall-badge" style={{ display: 'inline-block', marginBottom: '8px' }}>
           {t('suscripcion', 'etiqueta_acceso', 'HOJA DE RUTA TOTAL DEL MÉTODO BÉNTURI')}

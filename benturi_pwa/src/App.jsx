@@ -148,17 +148,17 @@ export default function App() {
   const navItems = [
     { index: 0, label: t('navegacion','tab_1','INICIO'), icon: NAV_ICONS[0], locked: false },
     { index: 1, label: t('navegacion','tab_2','6 CARTAS'), icon: NAV_ICONS[1], locked: false },
-    { index: 2, label: t('navegacion','tab_3','24 CARTAS'), icon: NAV_ICONS[2], locked: !isPremiumUnlocked },
+    { index: 2, label: t('navegacion','tab_3','24 CARTAS'), icon: NAV_ICONS[2], locked: false },
     { index: 3, label: t('navegacion','tab_5','DECIDE'), icon: NAV_ICONS[3], locked: !isPremiumUnlocked },
   ]
 
   const screens = [
     <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(4)} />,
     <Fase1Screen key="fase1" user={user} token={token} onQuickAuthSuccess={handleLoginSuccess} onNavigateToSubscription={() => setTab(5)} />,
-    <Fase1_24Screen key="fase1_24" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
+    <Fase1_24Screen key="fase1_24" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} onNavigateToSubscription={() => setTab(5)} />,
     <Fase3Screen key="fase3" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} />,
     <AdminScreen key="admin" token={token} />,
-    <SubscriptionScreen key="subscription" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} onBack={() => setTab(1)} />
+    <SubscriptionScreen key="subscription" user={user} token={token} onLoginClick={() => setShowAuthModal(true)} onBack={() => setTab(2)} />
   ]
 
   return (
