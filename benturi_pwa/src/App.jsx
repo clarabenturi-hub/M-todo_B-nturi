@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParticlesBackground from './components/ParticlesBackground'
 import InstallPrompt from './components/InstallPrompt'
-import { LayoutDashboard, Layers, Network, Zap } from 'lucide-react'
+import { LayoutDashboard, Layers, Network, Zap, Lock } from 'lucide-react'
 import { useTexts } from './hooks/useTexts'
 import { playBeep } from './utils/audio'
 
@@ -83,7 +83,7 @@ export default function App() {
 
   const isTest72h = typeof window !== 'undefined' && window.location.search.includes('test72h=1')
   const is72hElapsed = isTest72h || (tiradaTimestamp !== null && (nowMs - tiradaTimestamp >= 72 * 60 * 60 * 1000))
-  const canSeeAdvancedTabs = Boolean(user?.isPremium || user?.role === 'admin' || is72hElapsed)
+  const isPremiumUnlocked = Boolean(user?.isPremium || user?.role === 'admin')
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -146,11 +146,11 @@ export default function App() {
   }
 
   const navItems = [
-    { index: 0, label: t('navegacion','tab_1','INICIO'), icon: NAV_ICONS[0], visible: true },
-    { index: 1, label: t('navegacion','tab_2','6 CARTAS'), icon: NAV_ICONS[1], visible: true },
-    { index: 2, label: t('navegacion','tab_3','24 CARTAS'), icon: NAV_ICONS[2], visible: canSeeAdvancedTabs },
-    { index: 3, label: t('navegacion','tab_5','DECIDE'), icon: NAV_ICONS[3], visible: canSeeAdvancedTabs },
-  ].filter(item => item.visible)
+    { index: 0, label: t('navegacion','tab_1','INICIO'), icon: NAV_ICONS[0], locked: false },
+    { index: 1, label: t('navegacion','tab_2','6 CARTAS'), icon: NAV_ICONS[1], locked: false },
+    { index: 2, label: t('navegacion','tab_3','24 CARTAS'), icon: NAV_ICONS[2], locked: !isPremiumUnlocked },
+    { index: 3, label: t('navegacion','tab_5','DECIDE'), icon: NAV_ICONS[3], locked: !isPremiumUnlocked },
+  ]
 
   const screens = [
     <HomeScreen key="home" onNavigateTo6Cartas={() => setTab(1)} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={handleLogout} onNavigateToAdmin={() => setTab(4)} />,
@@ -197,14 +197,45 @@ export default function App() {
           <button
             key={item.index}
             id={`nav-tab-${item.index}`}
-            className={`nav-item${tab === item.index ? ' active' : ''}`}
+            className={`nav-item${tab === item.index ? ' active' : ''}${item.locked ? ' locked' : ''}`}
+            disabled={item.locked}
             onClick={() => {
+              if (item.locked) return;
               playBeep(400 + item.index * 50, 'sine', 100);
               setTab(item.index);
             }}
             aria-label={item.label}
+            aria-disabled={item.locked}
+            title={item.locked ? 'Disponible con suscripción Bénturi Premium' : item.label}
+            style={item.locked ? {
+              opacity: 0.38,
+              cursor: 'not-allowed',
+              position: 'relative'
+            } : { position: 'relative' }}
           >
-            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-icon" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              {item.icon}
+              {item.locked && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-8px',
+                    background: 'rgba(15, 23, 42, 0.92)',
+                    border: '1px solid rgba(217, 70, 239, 0.6)',
+                    borderRadius: '50%',
+                    width: '14px',
+                    height: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#D946EF'
+                  }}
+                >
+                  <Lock size={9} strokeWidth={2.5} />
+                </span>
+              )}
+            </span>
             {item.label}
           </button>
         ))}
