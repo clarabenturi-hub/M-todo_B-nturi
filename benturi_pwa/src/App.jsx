@@ -25,47 +25,6 @@ const NAV_ICONS = [
 export default function App() {
   const { t } = useTexts()
   const [tab, setTab] = useState(0)
-
-  // Modo mantenimiento global activado (solo tú puedes saltarlo añadiendo ?dev_preview=1 a la URL)
-  const isMaintenanceBypassed = typeof window !== 'undefined' && window.location.search.includes('dev_preview=1')
-  const isMaintenanceMode = !isMaintenanceBypassed
-
-  if (isMaintenanceMode) {
-    return (
-      <div
-        className="app-root"
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px',
-          textAlign: 'center'
-        }}
-      >
-        <ParticlesBackground />
-        <div
-          className="glass-card-light"
-          style={{
-            maxWidth: '520px',
-            width: '100%',
-            padding: '40px 28px',
-            borderRadius: '18px',
-            border: '1.5px solid rgba(0, 229, 255, 0.45)',
-            boxShadow: '0 0 40px rgba(0, 229, 255, 0.18)'
-          }}
-        >
-          <div style={{ fontSize: '42px', marginBottom: '16px' }}>⚙️</div>
-          <h1 className="shimmer-title" style={{ fontSize: 'clamp(20px, 5vw, 28px)', marginBottom: '14px' }}>
-            ESTAMOS EN MANTENIMIENTO
-          </h1>
-          <p style={{ fontSize: '15px !important', color: '#cbd5e1', lineHeight: '1.65', margin: '0 auto' }}>
-            Estamos realizando mejoras y actualizaciones en la plataforma del <strong>Método Bénturi</strong>. Volveremos a estar operativos muy pronto.
-          </p>
-        </div>
-      </div>
-    )
-  }
   
   // Autenticación global
   const [user, setUser] = useState(null)
