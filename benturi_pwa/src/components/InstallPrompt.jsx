@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Share, PlusSquare, ArrowDownToLine, Smartphone, X } from 'lucide-react';
+import { Share, PlusSquare, ArrowDownToLine, Smartphone, X, ExternalLink } from 'lucide-react';
 import Tilt from 'react-parallax-tilt';
+import { detectInAppBrowser } from '../utils/analytics';
 
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [inAppInfo, setInAppInfo] = useState({ isInApp: false, appName: null });
+  const [dismissedInAppBanner, setDismissedInAppBanner] = useState(false);
 
   useEffect(() => {
     const checkStandalone = () => {
@@ -22,6 +25,7 @@ export default function InstallPrompt() {
     };
 
     checkStandalone();
+    setInAppInfo(detectInAppBrowser());
     
     const ua = window.navigator.userAgent;
     const iOS = !!ua.match(/iPad/i) || !!ua.match(/iPhone/i);
@@ -47,8 +51,10 @@ export default function InstallPrompt() {
         setDeferredPrompt(null);
         setShowModal(false);
       }
+    } else if (inAppInfo.isInApp) {
+      alert(`Estás navegando desde dentro de ${inAppInfo.appName}. Pulsa el icono de los 3 puntos (⋯) arriba a la derecha y selecciona "Abrir en el navegador" (Safari o Chrome) para poder instalar la App y descargar tus informes PDF.`);
     } else {
-      alert("Tu navegador no permite la instalación automática en este momento. Esto suele ocurrir si no estás usando una conexión segura (HTTPS) o si la app ya está instalada. Para forzarlo, busca la opción 'Añadir a la pantalla de inicio' en el menú de opciones de tu navegador (los 3 puntitos).");
+      alert("Para añadir Método Bénturi a tu pantalla de inicio, abre el menú de opciones de tu navegador (los 3 puntos ⋮ o el icono Compartir) y selecciona 'Añadir a la pantalla de inicio' o 'Instalar aplicación'.");
     }
   };
 
@@ -56,15 +62,54 @@ export default function InstallPrompt() {
 
   return (
     <>
+      {/* 14. Banner inteligente para navegadores integrados de TikTok / Instagram / Facebook */}
+      {inAppInfo.isInApp && !dismissedInAppBanner && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '8px',
+            left: '10px',
+            right: '10px',
+            zIndex: 9500,
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(11, 25, 44, 0.98))',
+            border: '1.5px solid #00E5FF',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            color: '#ffffff',
+            fontFamily: "'Inter', sans-serif"
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', lineHeight: '1.4' }}>
+            <ExternalLink size={18} color="#00E5FF" style={{ flexShrink: 0 }} />
+            <div>
+              <strong>Navegador de {inAppInfo.appName} detectado:</strong> Para instalar la App o descargar tu PDF, pulsa <strong>⋯</strong> arriba a la derecha y elige <strong>«Abrir en el navegador»</strong>.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissedInAppBanner(true)}
+            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+            aria-label="Cerrar aviso"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Botón flotante sutil */}
       {!showModal && (
         <button 
           onClick={() => setShowModal(true)}
           style={{
             position: 'fixed',
-            bottom: '90px', // Justo encima de la barra de navegación
+            bottom: '90px',
             right: '20px',
-            background: 'rgba(15, 23, 42, 0.8)',
+            background: 'rgba(15, 23, 42, 0.85)',
             backdropFilter: 'blur(10px)',
             border: '1px solid var(--blue-accent)',
             borderRadius: '50px',
@@ -119,20 +164,26 @@ export default function InstallPrompt() {
             </div>
             
             <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '16px', letterSpacing: '1px' }}>INSTALA LA APP</h1>
-            <p style={{ color: 'var(--blue-mid)', fontSize: '14px', lineHeight: '1.6', marginBottom: '32px' }}>
-              Para la mejor experiencia inmersiva en el Laboratorio Bénturi, te recomendamos instalar la aplicación en tu móvil.
+            <p style={{ color: 'var(--blue-mid)', fontSize: '14px', lineHeight: '1.6', marginBottom: '24px' }}>
+              Para la mejor experiencia inmersiva en el Método Bénturi, instala el acceso directo en la pantalla de inicio de tu teléfono.
             </p>
+
+            {inAppInfo.isInApp && (
+              <div style={{ background: 'rgba(217, 70, 239, 0.14)', border: '1px solid rgba(217, 70, 239, 0.5)', borderRadius: '10px', padding: '12px', marginBottom: '16px', textAlign: 'left', fontSize: '12px', lineHeight: '1.5', color: '#f8fafc' }} onClick={e => e.stopPropagation()}>
+                <strong>⚠️ Estás dentro de {inAppInfo.appName}:</strong> Toca primero los <strong>3 puntos (⋯)</strong> arriba a la derecha y selecciona <strong>«Abrir en el navegador»</strong> (Safari o Chrome).
+              </div>
+            )}
 
             {isIOS ? (
               <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', textAlign: 'left', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
-                <p style={{ fontSize: '13px', fontWeight: '700', marginBottom: '16px', color: '#FFF' }}>Instrucciones para iOS:</p>
+                <p style={{ fontSize: '13px', fontWeight: '700', marginBottom: '16px', color: '#FFF' }}>Instrucciones para iPhone / iPad (Safari):</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                   <div style={{ background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '8px' }}><Share size={20} color="var(--blue-mid)" /></div>
-                  <p style={{ fontSize: '12px', color: 'var(--blue-mid)', margin: 0 }}>1. Toca el botón <strong>Compartir</strong> en Safari.</p>
+                  <p style={{ fontSize: '12px', color: 'var(--blue-mid)', margin: 0 }}>1. Toca el botón <strong>Compartir</strong> en la barra de Safari.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '8px' }}><PlusSquare size={20} color="var(--blue-mid)" /></div>
-                  <p style={{ fontSize: '12px', color: 'var(--blue-mid)', margin: 0 }}>2. Selecciona <strong>Añadir a inicio</strong>.</p>
+                  <p style={{ fontSize: '12px', color: 'var(--blue-mid)', margin: 0 }}>2. Selecciona <strong>Añadir a pantalla de inicio</strong>.</p>
                 </div>
               </div>
             ) : (

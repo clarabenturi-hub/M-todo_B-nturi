@@ -9,6 +9,7 @@ import rehypeRaw from 'rehype-raw'
 import { FULL_DECK } from '../constants/appData'
 import { generarPDFDesdeMarkdown, stripEmojis } from '../utils/pdf_generator.js'
 import { generateDeterministicReport } from '../utils/brain_engine.js'
+import { trackConversionEvent } from '../utils/analytics.js'
 
 const REMINDER_MESSAGES = [
   {
@@ -75,6 +76,7 @@ export default function Fase1Screen({ user, token, onQuickAuthSuccess, onNavigat
   const [showApuestasDialog, setShowApuestasDialog] = useState(false)
   const [showProcedimientoDialog, setShowProcedimientoDialog] = useState(false)
   const [showVentajaPopup, setShowVentajaPopup] = useState(false)
+  const [day3Selection, setDay3Selection] = useState(() => localStorage.getItem('benturi_day3_feedback') || '')
   const [acceptedLegal, setAcceptedLegal] = useState(false)
 
   // Control de ocultación del botón de descarga y desbloqueo a las 72 horas
@@ -346,8 +348,9 @@ export default function Fase1Screen({ user, token, onQuickAuthSuccess, onNavigat
     }
     setSelectedCards(filled)
 
-    setIsProcessing(true)
+      setIsProcessing(true)
     setCodeStream('')
+    trackConversionEvent('FreeReading6Started', { question })
 
     const HEX = '0123456789ABCDEF'
     streamTimer.current = setInterval(() => {
@@ -613,21 +616,94 @@ export default function Fase1Screen({ user, token, onQuickAuthSuccess, onNavigat
       </button>
 
       {is72hElapsed && (
-        <button
-          type="button"
-          className="btn-primary"
-          id="btn-unete-ventaja-main"
+        <div
+          className="glass-card"
           style={{
-            background: 'linear-gradient(135deg, #d946ef, #00e5ff)',
-            color: '#ffffff',
-            fontWeight: '800',
-            border: 'none',
-            boxShadow: '0 0 24px rgba(217, 70, 239, 0.45)'
+            border: '1.5px solid rgba(0, 229, 255, 0.45)',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(11, 25, 44, 0.95))',
+            textAlign: 'center',
+            padding: '18px 16px'
           }}
-          onClick={() => setShowVentajaPopup(true)}
         >
-          Únete a los que ya juegan con ventaja
-        </button>
+          <div style={{ fontSize: '11px', fontWeight: '800', color: '#00E5FF', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '6px' }}>
+            ⏳ AUTOEVALUACIÓN DEL DÍA 3 (72 HORAS)
+          </div>
+          <h3 style={{ fontSize: '16px', color: '#ffffff', marginBottom: '12px' }}>
+            ¿Se cumplió tu proyección de 6 vectores?
+          </h3>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: day3Selection ? '14px' : '0' }}>
+            <button
+              type="button"
+              id="btn-day3-cumplido"
+              onClick={() => {
+                setDay3Selection('cumplido');
+                localStorage.setItem('benturi_day3_feedback', 'cumplido');
+                trackConversionEvent('Day3ValidationClick', { choice: 'cumplido' });
+                setShowVentajaPopup(true);
+              }}
+              style={{
+                flex: '1 1 200px',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: day3Selection === 'cumplido' ? '2px solid #34d399' : '1px solid rgba(52, 211, 153, 0.45)',
+                background: day3Selection === 'cumplido' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(15, 23, 42, 0.7)',
+                color: '#ffffff',
+                fontWeight: '800',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              [ Sí, se ha cumplido ✅ ]
+            </button>
+            <button
+              type="button"
+              id="btn-day3-en-proceso"
+              onClick={() => {
+                setDay3Selection('en_proceso');
+                localStorage.setItem('benturi_day3_feedback', 'en_proceso');
+                trackConversionEvent('Day3ValidationClick', { choice: 'en_proceso' });
+              }}
+              style={{
+                flex: '1 1 200px',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: day3Selection === 'en_proceso' ? '2px solid #00E5FF' : '1px solid rgba(0, 229, 255, 0.45)',
+                background: day3Selection === 'en_proceso' ? 'rgba(0, 229, 255, 0.22)' : 'rgba(15, 23, 42, 0.7)',
+                color: '#ffffff',
+                fontWeight: '800',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              [ Está en proceso 🔄 ]
+            </button>
+          </div>
+
+          {day3Selection === 'en_proceso' && (
+            <p style={{ fontSize: '13px !important', color: '#cbd5e1', lineHeight: '1.55', margin: '0 0 12px 0' }}>
+              Cuando una proyección sigue en tránsito energético, las <strong>Tiradas Cruzadas ilimitadas</strong> y la <strong>Matriz Profunda de 24 Cartas</strong> te permiten triangular las reacciones de terceros y tomar el mando con el tercer poder <strong>DECIDE</strong>.
+            </p>
+          )}
+
+          <button
+            type="button"
+            className="btn-primary mt-12"
+            id="btn-unete-ventaja-main"
+            style={{
+              background: 'linear-gradient(135deg, #d946ef, #00e5ff)',
+              color: '#ffffff',
+              fontWeight: '800',
+              border: 'none',
+              boxShadow: '0 0 24px rgba(217, 70, 239, 0.45)'
+            }}
+            onClick={() => {
+              trackConversionEvent('Day3ValidationClick', { choice: 'cta_unete' });
+              setShowVentajaPopup(true);
+            }}
+          >
+            Únete a los que ya juegan con ventaja
+          </button>
+        </div>
       )}
 
       {result && (

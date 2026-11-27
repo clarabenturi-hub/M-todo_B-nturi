@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useTexts } from '../hooks/useTexts'
+import { trackConversionEvent } from '../utils/analytics'
 
 export default function SubscriptionScreen({ user, token, onLoginClick, onBack }) {
   const { t } = useTexts()
   const [loading, setLoading] = useState(false)
 
   const handleSubscribe = async () => {
+    trackConversionEvent('InitiateCheckout', { plan: 'premium', price: 12.95 })
     if (!user || !token) {
       onLoginClick()
       return

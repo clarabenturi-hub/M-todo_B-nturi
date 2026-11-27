@@ -483,6 +483,116 @@ app.get('/api/email/deliverability-config', (req, res) => {
     });
 });
 
+// 5. SISTEMA DE ATENCIÓN AL CLIENTE Y CENTRO DE AYUDA (FAQ + TICKETS DE SOPORTE)
+app.post('/api/support/ticket', async (req, res) => {
+    const { email, category, subject, message } = req.body || {};
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !message) {
+        return res.status(400).json({ error: 'Tu correo electrónico y el mensaje son obligatorios.' });
+    }
+    const cleanCat = category || 'Soporte Técnico';
+    const cleanSub = subject || `Consulta de ${cleanEmail}`;
+
+    db.run(
+        'INSERT INTO support_tickets (email, category, subject, message, status) VALUES (?, ?, ?, ?, ?)',
+        [cleanEmail, cleanCat, cleanSub, message.trim(), 'abierto'],
+        async function(err) {
+            if (err) {
+                console.error('Error guardando ticket de soporte:', err);
+                return res.status(500).json({ error: 'No se pudo registrar el ticket' });
+            }
+            const ticketId = this.lastID;
+            // Enviar notificación al correo corporativo de soporte y acuse de recibo al usuario
+            try {
+                await sendTransactionalEmail({
+                    to: process.env.SUPPORT_EMAIL || 'contacto@metodobenturi.com',
+                    subject: `[Ticket #${ticketId}] ${cleanCat}: ${cleanSub}`,
+                    html: `<p><strong>Ticket #${ticketId}</strong></p><p><strong>Usuario:</strong> ${cleanEmail}</p><p><strong>Categoría:</strong> ${cleanCat}</p><p><strong>Mensaje:</strong><br/>${message}</p>`,
+                    text: `Ticket #${ticketId}\nUsuario: ${cleanEmail}\nCategoría: ${cleanCat}\nMensaje:\n${message}`
+                });
+            } catch (e) {
+                console.warn('Ticket guardado en BD (aviso email opcional):', e);
+            }
+            res.status(201).json({
+                success: true,
+                ticketId,
+                message: `Tu solicitud (#${ticketId}) ha sido registrada. Nuestro equipo de soporte de Método Bénturi te responderá a ${cleanEmail}.`
+            });
+        }
+    );
+});
+
+app.get('/api/admin/tickets', authenticateToken, requireAdmin, (req, res) => {
+    db.all('SELECT * FROM support_tickets ORDER BY id DESC LIMIT 100', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error obteniendo tickets' });
+        res.json(rows || []);
+    });
+});
+
+app.post('/api/admin/tickets/:id/status', authenticateToken, requireAdmin, (req, res) => {
+    const { status } = req.body || {};
+    db.run('UPDATE support_tickets SET status = ? WHERE id = ?', [status || 'resuelto', req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error actualizando ticket' });
+        res.json({ success: true });
+    });
+});
+
+// 10. ANALÍTICA DE CONVERSIÓN DEL EMBUDO (REGISTRO EN BACKEND + MÉTRICAS PARA ADMIN)
+app.post('/api/analytics/event', (req, res) => {
+    const { eventName, email, deviceId, metadata } = req.body || {};
+    if (!eventName) return res.status(400).json({ error: 'eventName requerido' });
+    db.run(
+        'INSERT INTO analytics_events (eventName, email, deviceId, metadata, createdAt) VALUES (?, ?, ?, ?, ?)',
+        [String(eventName), (email || '').trim().toLowerCase(), deviceId || '', JSON.stringify(metadata || {}), Date.now()],
+        () => res.json({ ok: true })
+    );
+});
+
+app.get('/api/admin/analytics-summary', authenticateToken, requireAdmin, (req, res) => {
+    db.all('SELECT eventName, COUNT(*) as count FROM analytics_events GROUP BY eventName', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error obteniendo analítica' });
+        res.json({
+            events: rows || [],
+            activeQueueSize: geminiQueue.pending.length,
+            activeGeminiWorkers: geminiQueue.activeCount
+        });
+    });
+});
+
+// 6. COLA ASÍNCRONA DE CONCURRENCIA PARA BLINDAR LA API DE GEMINI ANTE PICOS DE TRÁFICO
+class GeminiAsyncQueue {
+    constructor(maxConcurrency = 5) {
+        this.maxConcurrency = maxConcurrency;
+        this.activeCount = 0;
+        this.pending = [];
+    }
+
+    enqueue(taskFn) {
+        return new Promise((resolve, reject) => {
+            this.pending.push({ taskFn, resolve, reject });
+            this.processNext();
+        });
+    }
+
+    processNext() {
+        if (this.activeCount >= this.maxConcurrency || this.pending.length === 0) {
+            return;
+        }
+        const nextItem = this.pending.shift();
+        this.activeCount++;
+        Promise.resolve()
+            .then(() => nextItem.taskFn())
+            .then(res => nextItem.resolve(res))
+            .catch(err => nextItem.reject(err))
+            .finally(() => {
+                this.activeCount--;
+                this.processNext();
+            });
+    }
+}
+
+const geminiQueue = new GeminiAsyncQueue(Number(process.env.GEMINI_MAX_CONCURRENCY) || 5);
+
 // --- ADMIN ENDPOINTS ---
 
 function requireAdmin(req, res, next) {
@@ -1231,43 +1341,45 @@ app.post('/api/generate-report', async (req, res) => {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
-        
-        let retries = 3;
-        let success = false;
-        while (retries > 0 && !success) {
-            try {
-                const model = genAI.getGenerativeModel({ 
-                    model: 'gemini-3.6-flash', 
-                    systemInstruction: systemPrompt,
-                    generationConfig: { temperature: 0.0, topP: 1 },
-                    safetySettings: [
-                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    ]
-                });
-                
-                const aiResponse = await model.generateContentStream(contextText);
-                
-                for await (const chunk of aiResponse.stream) {
-                    const chunkText = chunk.text();
-                    res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-                }
-                success = true;
-                break;
-            } catch (e) {
-                console.error(`Error contactando con Gemini API. Reintentos restantes: ${retries - 1}`, e);
-                retries--;
-                if (retries === 0) {
-                    const errorText = "## ⚠️ ALTA DEMANDA EN LOS SERVIDORES CUÁNTICOS\n\nActualmente, miles de usuarios están colapsando la onda de probabilidad simultáneamente y nuestros servidores cuánticos están saturados.\n\nPor favor, **cierra esta ventana, espera unos segundos y vuelve a pulsar el botón de Generar Informe**.\n\nTus cartas y parámetros seguirán guardados para que no tengas que volver a elegirlos.\n\n*(Nuestros ingenieros ya están escalando los servidores para soportar el crecimiento masivo).*";
-                    res.write(`data: ${JSON.stringify({ text: errorText })}\n\n`);
-                } else {
-                    await new Promise(resolve => setTimeout(resolve, 2000 * (4 - retries)));
+
+        // Ejecutar la llamada a Gemini dentro de la Cola Asíncrona (geminiQueue) para blindar la API en picos virales
+        await geminiQueue.enqueue(async () => {
+            let retries = 3;
+            let success = false;
+            while (retries > 0 && !success) {
+                try {
+                    const model = genAI.getGenerativeModel({ 
+                        model: 'gemini-3.6-flash', 
+                        systemInstruction: systemPrompt,
+                        generationConfig: { temperature: 0.0, topP: 1 },
+                        safetySettings: [
+                            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        ]
+                    });
+                    
+                    const aiResponse = await model.generateContentStream(contextText);
+                    
+                    for await (const chunk of aiResponse.stream) {
+                        const chunkText = chunk.text();
+                        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+                    }
+                    success = true;
+                    break;
+                } catch (e) {
+                    console.error(`Error contactando con Gemini API. Reintentos restantes: ${retries - 1}`, e);
+                    retries--;
+                    if (retries === 0) {
+                        const errorText = "## ⚠️ ALTA DEMANDA EN LOS SERVIDORES CUÁNTICOS\n\nActualmente, miles de usuarios están colapsando la onda de probabilidad simultáneamente y nuestros servidores cuánticos están saturados.\n\nPor favor, **cierra esta ventana, espera unos segundos y vuelve a pulsar el botón de Generar Informe**.\n\nTus cartas y parámetros seguirán guardados para que no tengas que volver a elegirlos.\n\n*(Nuestros ingenieros ya están escalando los servidores para soportar el crecimiento masivo).*";
+                        res.write(`data: ${JSON.stringify({ text: errorText })}\n\n`);
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 2000 * (4 - retries)));
+                    }
                 }
             }
-        }
-        
+        });
 
         res.write('data: [DONE]\n\n');
         res.end();

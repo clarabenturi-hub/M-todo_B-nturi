@@ -7,7 +7,9 @@ import { useTexts } from './hooks/useTexts'
 import { playBeep } from './utils/audio'
 
 import AuthModal from './components/AuthModal'
+import HelpCenterModal from './components/HelpCenterModal'
 import LegalFooter from './components/LegalFooter'
+import { initAnalyticsPixels, trackConversionEvent } from './utils/analytics'
 import HomeScreen from './pages/HomeScreen'
 import Fase1Screen from './pages/Fase1Screen'
 import Fase1_24Screen from './pages/Fase1_24Screen'
@@ -30,7 +32,13 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(() => localStorage.getItem('benturi_token') || null)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showHelpModal, setShowHelpModal] = useState(false)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
+  useEffect(() => {
+    initAnalyticsPixels()
+    trackConversionEvent('PageView', { tab })
+  }, [])
 
   // Control de desbloqueo de pestañas 24 CARTAS y DECIDE a las 72 horas de la tirada de 6
   const [tiradaTimestamp, setTiradaTimestamp] = useState(() => {
@@ -118,6 +126,7 @@ export default function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('pago') === 'ok') {
+      trackConversionEvent('Purchase', { value: 12.95, currency: 'EUR', plan: 'premium' })
       alert("¡PAGO COMPLETADO CON ÉXITO! Ya tienes acceso premium.")
       window.history.replaceState({}, document.title, "/")
       // Esperamos 1 segundo para dar tiempo al Webhook de Redsys y refrescamos el usuario
@@ -176,6 +185,12 @@ export default function App() {
           onLoginSuccess={handleLoginSuccess} 
         />
       )}
+      {showHelpModal && (
+        <HelpCenterModal
+          onClose={() => setShowHelpModal(false)}
+          userEmail={user?.email || ''}
+        />
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -190,7 +205,7 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
 
-      <LegalFooter />
+      <LegalFooter onOpenHelp={() => setShowHelpModal(true)} />
 
       <nav className="bottom-nav" aria-label="Navegación principal">
         {navItems.map((item) => (

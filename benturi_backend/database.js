@@ -101,6 +101,27 @@ const db = new sqlite3.Database(dbPath, (err) => {
       providerResponse TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // 5. SISTEMA DE ATENCIÓN AL CLIENTE Y TICKETS DE SOPORTE (FAQ / CENTRO DE AYUDA)
+    db.run(`CREATE TABLE IF NOT EXISTS support_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      category TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT DEFAULT 'abierto',
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // 10. EVENTOS DE ANALÍTICA Y CONVERSIÓN DEL EMBUDO (TIKTOK / YOUTUBE / META / GA4)
+    db.run(`CREATE TABLE IF NOT EXISTS analytics_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      eventName TEXT NOT NULL,
+      email TEXT,
+      deviceId TEXT,
+      metadata TEXT,
+      createdAt INTEGER NOT NULL
+    )`);
   }
 });
 

@@ -1,6 +1,6 @@
-import { ShieldCheck, Scale, Lock, Cookie, Building2 } from 'lucide-react'
+import { ShieldCheck, Scale, Lock, Cookie, Building2, HelpCircle } from 'lucide-react'
 
-export default function LegalFooter() {
+export default function LegalFooter({ onOpenHelp }) {
   const disabledLinkStyle = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -147,6 +147,32 @@ export default function LegalFooter() {
             <Building2 size={13} />
             Datos de Contacto / Información Corporativa
           </span>
+
+          {onOpenHelp && (
+            <button
+              type="button"
+              id="btn-open-help-center"
+              onClick={onOpenHelp}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 15px',
+                borderRadius: '999px',
+                background: 'linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(217, 70, 239, 0.2))',
+                border: '1px solid #00E5FF',
+                color: '#ffffff',
+                fontSize: '11.5px',
+                fontWeight: '700',
+                fontFamily: "'Inter', sans-serif",
+                cursor: 'pointer',
+                boxShadow: '0 0 12px rgba(0, 229, 255, 0.25)'
+              }}
+            >
+              <HelpCircle size={13} color="#00E5FF" />
+              Centro de Ayuda (FAQ) y Soporte
+            </button>
+          )}
         </div>
 
         {/* Copyright e Información Corporativa */}
