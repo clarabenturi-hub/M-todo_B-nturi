@@ -1,13 +1,7 @@
 import { useTexts } from '../hooks/useTexts'
-import SubscriptionScreen from './SubscriptionScreen'
 
-export default function Fase3Screen({ user, token, onLoginClick }) {
+export default function Fase3Screen() {
   const { t } = useTexts()
-
-  // Bloquear la interna DECIDE: solo visible cuando el usuario haya pagado (isPremium) o sea admin
-  if (!user?.isPremium && user?.role !== 'admin') {
-    return <SubscriptionScreen user={user} token={token} onLoginClick={onLoginClick} />
-  }
 
   return (
     <div className="page stack">

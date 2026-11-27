@@ -158,7 +158,7 @@ export default function App() {
     { index: 0, label: t('navegacion','tab_1','INICIO'), icon: NAV_ICONS[0], locked: false },
     { index: 1, label: t('navegacion','tab_2','6 CARTAS'), icon: NAV_ICONS[1], locked: false },
     { index: 2, label: t('navegacion','tab_3','24 CARTAS'), icon: NAV_ICONS[2], locked: false },
-    { index: 3, label: t('navegacion','tab_5','DECIDE'), icon: NAV_ICONS[3], locked: !isPremiumUnlocked },
+    { index: 3, label: t('navegacion','tab_5','DECIDE'), icon: NAV_ICONS[3], locked: false },
   ]
 
   const screens = [
